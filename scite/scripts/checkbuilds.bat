@@ -8,7 +8,7 @@
 @cd ..\..
 @rem Check that Scintilla and Lexilla have the same version number
 @for /F %%i IN (scintilla\version.txt) do set "SCINTILLA_VERSION=%%i"
-@for /F %%i IN (scintilla\lexilla\version.txt) do set "LEXILLA_VERSION=%%i"
+@for /F %%i IN (lexilla\version.txt) do set "LEXILLA_VERSION=%%i"
 @if [%SCINTILLA_VERSION%]==[%LEXILLA_VERSION%] goto VERSIONS_MATCH
 @echo checkbuilds.bat:12: Scintilla and Lexilla have different versions %SCINTILLA_VERSION%, %LEXILLA_VERSION%
 goto CLEANUP
@@ -27,12 +27,16 @@ mingw32-make -j
 rem ************************************************************
 rem Target 2: Build and check Lexilla
 @call scite\scripts\clearboth
-@pushd scintilla\lexilla\src
+@pushd lexilla\src
 mingw32-make clean
 mingw32-make -j
 @if ERRORLEVEL 2 goto ERROR
 @popd
-@pushd scintilla\lexilla\test
+@pushd lexilla\test
+mingw32-make clean
+mingw32-make test
+@popd
+@pushd lexilla\test\unit
 mingw32-make clean
 mingw32-make test
 @popd
@@ -44,7 +48,7 @@ rem Target 3: Normal gcc build
 mingw32-make -j
 @if ERRORLEVEL 2 goto ERROR
 @popd
-@pushd scintilla\lexilla\src
+@pushd lexilla\src
 mingw32-make -j
 @if ERRORLEVEL 2 goto ERROR
 @popd
@@ -68,7 +72,7 @@ cl
 nmake -f scintilla.mak QUIET=1
 @if ERRORLEVEL 2 goto ERROR
 @popd
-@pushd scintilla\lexilla\src
+@pushd lexilla\src
 nmake -f lexilla.mak QUIET=1
 @if ERRORLEVEL 2 goto ERROR
 @popd
@@ -84,11 +88,11 @@ nmake -f scite.mak QUIET=1
 @popd
 @rem
 rem ************************************************************
-rem Target 5: Visual C++ using scintilla\win32\SciLexer.vcxproj and scite\win32\SciTE.vcxproj
+rem Target 5: Visual C++ using scintilla\win32\Scintilla.vcxproj and scite\win32\SciTE.vcxproj
 @echo on
 @call scite\scripts\clearboth
 @pushd scintilla\win32
-msbuild /verbosity:minimal /p:Platform=Win32 /p:Configuration=Release SciLexer.vcxproj
+msbuild /verbosity:minimal /p:Platform=Win32 /p:Configuration=Release Scintilla.vcxproj
 @if ERRORLEVEL 2 goto ERROR
 @popd
 @call scite\scripts\clearboth
@@ -110,16 +114,12 @@ mingw32-make -j CXXFLAGS=-Wno-parentheses static
 rem ************************************************************
 rem Target 7: Visual C++ 64 bit
 @call scite\scripts\clearboth
-@pushd scintilla\lexilla\src
+@pushd lexilla\src
 msbuild /verbosity:minimal /p:Platform=x64 /p:Configuration=Release Lexilla.vcxproj
 @if ERRORLEVEL 2 goto ERROR
 @popd
 @pushd scintilla\win32
 msbuild /verbosity:minimal /p:Platform=x64 /p:Configuration=Release Scintilla.vcxproj
-@if ERRORLEVEL 2 goto ERROR
-@popd
-@pushd scintilla\win32
-msbuild /verbosity:minimal /p:Platform=x64 /p:Configuration=Release SciLexer.vcxproj
 @if ERRORLEVEL 2 goto ERROR
 @popd
 @call scite\scripts\clearboth
@@ -147,7 +147,7 @@ rem Target 9: Clang build
 mingw32-make CLANG=1 -j
 @if ERRORLEVEL 2 goto ERROR
 @popd
-@pushd scintilla\lexilla\src
+@pushd lexilla\src
 mingw32-make CLANG=1 -j
 @if ERRORLEVEL 2 goto ERROR
 @popd
@@ -183,14 +183,15 @@ nmake distclean
 rem ************************************************************
 rem Target 11: cppcheck
 @call scite\scripts\clearboth
-cppcheck -j 8 --enable=all --suppressions-list=scintilla/cppcheck.suppress --max-configs=100 -I scintilla/src -I scintilla/include -I scintilla/lexlib -I scintilla/qt/ScintillaEditBase "-DSTDMETHODIMP_(type) type STDMETHODCALLTYPE" --template=gcc --quiet scintilla
-cppcheck -j 8 --enable=all --suppressions-list=scite/cppcheck.suppress --max-configs=100 -I scite/src -I scintilla/include -I scite/lua/src -Ulua_assert -DPATH_MAX=260 --template=gcc --quiet scite
+cppcheck -j 8 --enable=all --suppressions-list=lexilla/cppcheck.suppress --max-configs=100 -I lexilla/include -I lexilla/access -I lexilla/lexlib -I scintilla/include "-DSTDMETHODIMP_(type) type STDMETHODCALLTYPE" --template=gcc --quiet lexilla
+cppcheck -j 8 --enable=all --suppressions-list=scintilla/cppcheck.suppress --max-configs=100 -I scintilla/src -I scintilla/include -I scintilla/qt/ScintillaEditBase "-DSTDMETHODIMP_(type) type STDMETHODCALLTYPE" --template=gcc --quiet scintilla
+cppcheck -j 8 --enable=all --suppressions-list=scite/cppcheck.suppress --max-configs=100 -I scite/src -I lexilla/include -I lexilla/access -I scintilla/include -I scite/lua/src -Ulua_assert -DPATH_MAX=260 --template=gcc --quiet scite
 @rem
 rem ************************************************************
 rem Target 12: header order check
-@pushd scintilla\scripts
-pyw HeaderCheck.py
-@popd
+pyw scintilla\scripts\HeaderCheck.py scintilla\scripts\HeaderOrder.txt
+pyw scintilla\scripts\HeaderCheck.py lexilla\scripts\HeaderOrder.txt
+pyw scintilla\scripts\HeaderCheck.py scite\scripts\HeaderOrder.txt
 @rem
 rem Finished
 @call scite\scripts\clearboth

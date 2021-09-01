@@ -37,12 +37,13 @@ SciTEGTK.o: \
 	../src/ScintillaCall.h \
 	../../scintilla/include/Scintilla.h \
 	../../scintilla/include/ScintillaWidget.h \
+	../../lexilla/include/Lexilla.h \
+	../../lexilla/access/LexillaAccess.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
 	../src/StringList.h \
 	../src/StringHelpers.h \
 	../src/FilePath.h \
-	../src/LexillaLibrary.h \
 	../src/StyleDefinition.h \
 	../src/PropSetFile.h \
 	../src/Extender.h \
@@ -231,11 +232,6 @@ JobQueue.o: \
 	../src/PropSetFile.h \
 	../src/SciTE.h \
 	../src/JobQueue.h
-LexillaLibrary.o: \
-	../src/LexillaLibrary.cxx \
-	../../scintilla/include/ILexer.h \
-	../../scintilla/include/Sci_Position.h \
-	../src/LexillaLibrary.h
 LuaExtension.o: \
 	../src/LuaExtension.cxx \
 	../src/ScintillaTypes.h \
@@ -293,7 +289,7 @@ SciTEBase.o: \
 	../src/ScintillaMessages.h \
 	../src/ScintillaCall.h \
 	../../scintilla/include/Scintilla.h \
-	../../scintilla/include/SciLexer.h \
+	../../lexilla/include/SciLexer.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
 	../src/StringList.h \
@@ -317,7 +313,7 @@ SciTEBuffers.o: \
 	../../scintilla/include/Sci_Position.h \
 	../src/ScintillaTypes.h \
 	../src/ScintillaCall.h \
-	../../scintilla/include/SciLexer.h \
+	../../lexilla/include/SciLexer.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
 	../src/StringList.h \
@@ -365,13 +361,14 @@ SciTEProps.o: \
 	../src/ScintillaMessages.h \
 	../src/ScintillaCall.h \
 	../../scintilla/include/Scintilla.h \
-	../../scintilla/include/SciLexer.h \
+	../../lexilla/include/SciLexer.h \
+	../../lexilla/include/Lexilla.h \
+	../../lexilla/access/LexillaAccess.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
 	../src/StringList.h \
 	../src/StringHelpers.h \
 	../src/FilePath.h \
-	../src/LexillaLibrary.h \
 	../src/StyleDefinition.h \
 	../src/PropSetFile.h \
 	../src/StyleWriter.h \
@@ -826,3 +823,9 @@ lzio.o: \
 	../lua/src/lobject.h \
 	../lua/src/ltm.h \
 	../lua/src/lzio.h
+LexillaAccess.o: \
+	../../lexilla/access/LexillaAccess.cxx \
+	../../scintilla/include/ILexer.h \
+	../../scintilla/include/Sci_Position.h \
+	../../lexilla/include/Lexilla.h \
+	../../lexilla/access/LexillaAccess.h

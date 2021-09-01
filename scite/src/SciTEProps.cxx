@@ -34,6 +34,8 @@
 
 #include "Scintilla.h"
 #include "SciLexer.h"
+#include "Lexilla.h"
+#include "LexillaAccess.h"
 
 #include "GUI.h"
 #include "ScintillaWindow.h"
@@ -51,7 +53,6 @@ const GUI::gui_char menuAccessIndicator[] = GUI_TEXT("&");
 #include "StringList.h"
 #include "StringHelpers.h"
 #include "FilePath.h"
-#include "LexillaLibrary.h"
 #include "StyleDefinition.h"
 #include "PropSetFile.h"
 #include "StyleWriter.h"
@@ -471,6 +472,10 @@ static const char *propertiesToForward[] = {
 	"fold.d.syntax.based",
 	"fold.dataflex.compilerlist",
 	"fold.directive",
+	"fold.fsharp.comment.multiline",
+	"fold.fsharp.comment.stream",
+	"fold.fsharp.imports",
+	"fold.fsharp.preprocessor",
 	"fold.haskell.imports",
 	"fold.html",
 	"fold.html.preprocessor",
@@ -667,14 +672,14 @@ void SciTEBase::ReadProperties() {
 		extender->Clear();
 
 	const std::string lexillaPath = props.GetExpandedString("lexilla.path");
-	LexillaLoad(lexillaPath.empty() ? "." : lexillaPath);
+	Lexilla::Load(lexillaPath.empty() ? "." : lexillaPath);
 
-	std::vector<std::string> libraryProperties = LexillaLibraryProperties();
+	std::vector<std::string> libraryProperties = Lexilla::LibraryProperties();
 	for (std::string property : libraryProperties) {
 		std::string key("lexilla.context.");
 		key += property;
 		std::string value = props.GetExpandedString(key.c_str());
-		LexillaSetProperty(property.c_str(), value.c_str());
+		Lexilla::SetProperty(property.c_str(), value.c_str());
 	}
 
 	const std::string fileNameForExtension = ExtensionFileName();
@@ -684,36 +689,30 @@ void SciTEBase::ReadProperties() {
 	if (modulePath.length())
 		wEditor.LoadLexerLibrary(modulePath.c_str());
 	language = props.GetNewExpandString("lexer.", fileNameForExtension.c_str());
-	if (static_cast<int>(wEditor.DocumentOptions()) & static_cast<int>(SA::DocumentOption::StylesNone)) {
-		language = "";
+	if (language.empty()) {
+		language = "null";
 	}
-	if (language.length()) {
+	if (static_cast<int>(wEditor.DocumentOptions()) & static_cast<int>(SA::DocumentOption::StylesNone)) {
+		language = "null";
+	}
+	const std::string languageCurrent = wEditor.LexerLanguage();
+	if (language != languageCurrent) {
 		if (StartsWith(language, "script_")) {
-			wEditor.SetLexer(SCLEX_CONTAINER);
+			wEditor.SetILexer(nullptr);
 		} else {
-			std::string languageCurrent = wEditor.LexerLanguage();
-			if (language != languageCurrent) {
-				Scintilla::ILexer5 *plexer = LexillaCreateLexer(language);
-				if (plexer) {
-					wEditor.SetILexer(plexer);
-				} else {
-					wEditor.SetLexerLanguage(language.c_str());
-				}
-			}
+			Scintilla::ILexer5 *plexer = Lexilla::MakeLexer(language);
+			wEditor.SetILexer(plexer);
 		}
-	} else {
-		wEditor.SetLexer(SCLEX_NULL);
 	}
 
-	props.Set("Language", language.c_str());
+	props.Set("Language", language);
 
 	lexLanguage = wEditor.Lexer();
 
-	Scintilla::ILexer5 *plexerErrorlist = LexillaCreateLexer("errorlist");
-	if (plexerErrorlist) {
+	const std::string languageOutput = wOutput.LexerLanguage();
+	if (languageOutput != "errorlist") {
+		Scintilla::ILexer5 *plexerErrorlist = Lexilla::MakeLexer("errorlist");
 		wOutput.SetILexer(plexerErrorlist);
-	} else {
-		wOutput.SetLexerLanguage("errorlist");
 	}
 
 	const std::string kw0 = props.GetNewExpandString("keywords.", fileNameForExtension.c_str());

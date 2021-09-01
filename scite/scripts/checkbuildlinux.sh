@@ -48,11 +48,18 @@ make clean
 )
 
 (
-cd scintilla/lexilla/src || exit
+cd lexilla/src || exit
 make clean
 make $JOBS
-cd ..
-cd test || exit
+)
+(
+cd lexilla/test || exit
+make clean
+make test
+make clean
+)
+(
+cd lexilla/test/unit || exit
 make clean
 make test
 make clean
@@ -72,6 +79,12 @@ make $JOBS
 
 # ************************************************************
 # Target 2: gcc build for GTK+ 3
+(
+cd lexilla/src || exit
+make clean
+make $JOBS GTK3=1
+)
+
 (
 cd scintilla/gtk || exit
 make clean
@@ -134,6 +147,12 @@ python2 sepbuild.py --clean
 # ************************************************************
 # Target 4: clang build for GTK+ 2
 (
+cd lexilla/src || exit
+make clean
+make $JOBS CLANG=1
+)
+
+(
 cd scintilla/gtk || exit
 make clean
 make $JOBS CLANG=1
@@ -147,6 +166,12 @@ make $JOBS CLANG=1
 
 # ************************************************************
 # Target 5: clang build for GTK+ 3
+(
+cd lexilla/src || exit
+make clean
+make $JOBS CLANG=1 GTK3=1
+)
+
 (
 cd scintilla/gtk || exit
 make clean
@@ -180,5 +205,6 @@ make clean
 # ************************************************************
 # Target 7: cppcheck static checker
 # Disabled as there are false warnings and some different style choices
-cppcheck --enable=all --max-configs=100 --suppressions-list=scintilla/cppcheck.suppress -I scintilla/src -I scintilla/include -I scintilla/lexlib -I scintilla/qt/ScintillaEditBase --template=gcc --quiet scintilla
+cppcheck --enable=all --max-configs=100 --suppressions-list=lexilla/cppcheck.suppress -I lexilla/include -I lexilla/lexlib --template=gcc --quiet lexilla
+cppcheck --enable=all --max-configs=100 --suppressions-list=scintilla/cppcheck.suppress -I scintilla/src -I scintilla/include -I scintilla/qt/ScintillaEditBase --template=gcc --quiet scintilla
 cppcheck --enable=all --max-configs=100 --suppressions-list=scite/cppcheck.suppress -I scite/src -I scintilla/include -I scite/lua/src -Ulua_assert -DPATH_MAX=260 --template=gcc --quiet scite

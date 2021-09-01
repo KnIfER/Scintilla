@@ -11,18 +11,21 @@ useInitializationList
 // FilePath has a non-explicit constructor used for conversions
 noExplicitConstructor:scite/src/FilePath.h
 
-// The Flush call has side effects that change the result of the second condition
-duplicateCondition:scite/src/StyleWriter.cxx
+// TextReader and StyleWriter hold references to a ScintillaCall on
+// which they later call non-const methods.
+constParameter:scite/src/StyleWriter.cxx
+
+// Doesn't analyze execution path correctly.
+nullPointerRedundantCheck:scite/src/SciTEBase.cxx
 
 // Doesn't understand Win32 SetClipboardData is not leak
 memleak:scite/win32/SciTEWin.cxx
 
-// AddToPopUp is currently const but is not logically const and may change
-constParameter:scite/win32/Strips.cxx
-constParameter:scite/gtk/Widget.cxx
+// Confused by expression (x && (x != -1))
+knownConditionTrueFalse:scite/win32/SciTEWin.cxx
 
-// Menu::Show for Win32 is not logically const and is implemented differently on different platforms
-constParameter:scite/win32/GUIWin.cxx
+// AddToPopUp is currently const but is not logically const and may change
+constParameter:scite/gtk/Widget.cxx
 
 // Suppress everything in lua as that comes from the Lua distribution
 *:scite/lua/*

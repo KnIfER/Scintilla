@@ -3,6 +3,17 @@
 // and each of these groups are then divided into directory groups.
 // Based on Scintilla's HeaderOrder.txt and compatible with it.
 
+// Base of the repository relative to this file
+
+//base:..
+
+// File patterns to check:
+//source:**/*.h
+//source:**/*.cxx
+
+// Exclude lua implementation as it is an external project that follows different rules
+//exclude:lua
+
 // C standard library
 #include <stdlib.h>
 #include <string.h>
@@ -52,7 +63,6 @@
 
 #include <unistd.h>
 #include <dirent.h>
-#include <dlfcn.h>
 
 // Also on Windows
 #include <sys/types.h>
@@ -85,7 +95,6 @@
 
 // include
 
-#include "Sci_Position.h"
 #include "ILoader.h"
 #include "ILexer.h"
 #include "ScintillaTypes.h"
@@ -95,6 +104,8 @@
 #include "ScintillaWidget.h"
 
 #include "SciLexer.h"
+#include "Lexilla.h"
+#include "LexillaAccess.h"
 
 // SciTE headers
 
@@ -103,7 +114,6 @@
 #include "StringList.h"
 #include "StringHelpers.h"
 #include "FilePath.h"
-#include "LexillaLibrary.h"
 #include "StyleDefinition.h"
 #include "PropSetFile.h"
 #include "StyleWriter.h"
