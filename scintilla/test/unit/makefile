@@ -15,18 +15,22 @@ USELIBCPP = 1
 endif
 endif
 
+CXXFLAGS += $(OPTIMIZATION)
 CXXFLAGS += --std=$(CXXSTD)
 
 ifdef CLANG
 CXX = clang++
+CXXFLAGS += -D_CRT_SECURE_NO_DEPRECATE
 ifdef USELIBCPP
 # OS X, use libc++ but don't have sanitizers
 CXXFLAGS += --stdlib=libc++
 LINKFLAGS = -lc++
 else
+ifndef windir
 # Linux, have sanitizers
 SANITIZE = -fsanitize=address,undefined
 CXXFLAGS += $(SANITIZE)
+endif
 endif
 else
 CXX = g++
@@ -40,7 +44,7 @@ DEL = rm -f
 EXE = unitTest
 endif
 
-INCLUDEDIRS = -I ../../include -I ../../src -I../../lexlib
+INCLUDEDIRS = -I ../../include -I ../../src
 
 CPPFLAGS += $(INCLUDEDIRS)
 CXXFLAGS += -Wall -Wextra
@@ -49,6 +53,8 @@ CXXFLAGS += -Wall -Wextra
 TESTSRC=test*.cxx
 # Files being tested from scintilla/src directory
 TESTEDSRC=\
+ ../../src/CaseConvert.cxx \
+ ../../src/CaseFolder.cxx \
  ../../src/CellBuffer.cxx \
  ../../src/CharacterCategoryMap.cxx \
  ../../src/CharClassify.cxx \
