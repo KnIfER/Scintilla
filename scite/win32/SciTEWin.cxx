@@ -8,6 +8,7 @@
 #include <time.h>
 
 #include "SciTEWin.h"
+#include "DLLFunction.h"
 
 #ifndef WM_DPICHANGED
 #define WM_DPICHANGED 0x02E0
@@ -30,6 +31,11 @@
 const GUI::gui_char appName[] = GUI_TEXT("Sc1");
 #else
 const GUI::gui_char appName[] = GUI_TEXT("SciTE");
+#ifdef LOAD_SCINTILLA
+static const GUI::gui_char scintillaName[] = GUI_TEXT("Scintilla.DLL");
+#else
+static const GUI::gui_char scintillaName[] = GUI_TEXT("SciLexer.DLL");
+#endif
 #endif
 
 static GUI::gui_string GetErrorMessage(DWORD nRet) {
@@ -151,6 +157,16 @@ SciTEWin *SciTEWin::app = nullptr;
 
 namespace {
 
+using SystemParametersInfoForDpiSig = BOOL (WINAPI *)(
+	UINT  uiAction,
+	UINT  uiParam,
+	PVOID pvParam,
+	UINT  fWinIni,
+	UINT  dpi
+);
+
+SystemParametersInfoForDpiSig fnSystemParametersInfoForDpi;
+
 // Using VerifyVersionInfo on Windows 10 will pretend its Windows 8
 // but that is good enough for switching UI elements to flatter.
 // The VersionHelpers.h functions can't be used as they aren't supported by GCC.
@@ -190,6 +206,8 @@ SciTEWin::SciTEWin(Extension *ext) : SciTEBase(ext) {
 
 	flatterUI = UIShouldBeFlat();
 
+	appearance = CurrentAppearance();
+
 	cmdShow = 0;
 	heightBar = 7;
 	fontTabs = {};
@@ -218,9 +236,9 @@ SciTEWin::SciTEWin(Extension *ext) : SciTEBase(ext) {
 
 	ReadEnvironment();
 
-	ReadGlobalPropFile();
+	SetScaleFactor(GetScaleFactor());
 
-	SetScaleFactor(0);
+	ReadGlobalPropFile();
 
 	tbLarge = props.GetInt("toolbar.large");
 	/// Need to copy properties to variables before setting up window
@@ -382,14 +400,22 @@ void SciTEWin::GetWindowPosition(int *left, int *top, int *width, int *height, i
 	*maximize = (winPlace.showCmd == SW_MAXIMIZE) ? 1 : 0;
 }
 
-void SciTEWin::SetScaleFactor(int scale) {
-	if (scale == 0) {
-		HDC hdcMeasure = ::CreateCompatibleDC(NULL);
-		scale = ::GetDeviceCaps(hdcMeasure, LOGPIXELSX) * 100 / 96;
-		::DeleteDC(hdcMeasure);
+int SciTEWin::GetScaleFactor() noexcept {
+	// Only called at startup, so just use the default for a DC
+	HDC hdcMeasure = ::CreateCompatibleDC({});
+	const int scale = ::GetDeviceCaps(hdcMeasure, LOGPIXELSY) * 100 / 96;
+	::DeleteDC(hdcMeasure);
+	return scale;
+}
+
+bool SciTEWin::SetScaleFactor(int scale) {
+	const std::string sScale = StdStringFromInteger(scale);
+	const std::string sCurrentScale = propsPlatform.GetString("ScaleFactor");
+	if (sScale == sCurrentScale) {
+		return false;
 	}
-	std::string sScale = StdStringFromInteger(scale);
-	propsPlatform.Set("ScaleFactor", sScale.c_str());
+	propsPlatform.Set("ScaleFactor", sScale);
+	return true;
 }
 
 // Allow UTF-8 file names and command lines to be used in calls to io.open and io.popen in Lua scripts.
@@ -440,6 +466,41 @@ void SciTEWin::ReadEmbeddedProperties() {
 		}
 		::FreeResource(handProps);
 	}
+}
+
+SystemAppearance SciTEWin::CurrentAppearance() const noexcept {
+	SystemAppearance currentAppearance{};
+
+	HKEY hkeyPersonalize{};
+	const LSTATUS statusOpen = ::RegOpenKeyExW(HKEY_CURRENT_USER,
+		L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+		0, KEY_QUERY_VALUE, &hkeyPersonalize);
+	if (statusOpen == ERROR_SUCCESS) {
+		DWORD type = 0;
+		DWORD val = 99;
+		DWORD cbData = sizeof(val);
+		const LSTATUS status = ::RegQueryValueExW(hkeyPersonalize, L"AppsUseLightTheme", nullptr,
+			&type, reinterpret_cast<LPBYTE>(&val), reinterpret_cast<LPDWORD>(&cbData));
+		RegCloseKey(hkeyPersonalize);
+		if (status == ERROR_SUCCESS) {
+			currentAppearance.dark = val == 0;
+		}
+	}
+
+	HIGHCONTRAST info{};
+	info.cbSize = sizeof(HIGHCONTRAST)
+		;
+	const BOOL status = SystemParametersInfoW(SPI_GETHIGHCONTRAST, 0, &info, 0);
+	if (status) {
+		currentAppearance.highContrast = (info.dwFlags & HCF_HIGHCONTRASTON) ? 1 : 0;
+		if (currentAppearance.highContrast) {
+			// With high contrast, AppsUseLightTheme not correct so examine system background colour
+			const DWORD dwWindowColour = ::GetSysColor(COLOR_WINDOW);
+			currentAppearance.dark = dwWindowColour < 0x40;
+		}
+	}
+
+	return currentAppearance;
 }
 
 void SciTEWin::ReadPropertiesInitial() {
@@ -1743,6 +1804,52 @@ void SciTEWin::RestoreFromTray() {
 	::Shell_NotifyIcon(NIM_DELETE, &nid);
 }
 
+void SciTEWin::SettingChanged(WPARAM wParam, LPARAM lParam) {
+	if (lParam) {
+		const GUI::gui_string_view sv(reinterpret_cast<const wchar_t *>(lParam));
+		if (sv == L"ImmersiveColorSet") {
+			CheckAppearanceChanged();
+		}
+	}
+	wEditor.Send(WM_SETTINGCHANGE, wParam, lParam);
+	wOutput.Send(WM_SETTINGCHANGE, wParam, lParam);
+}
+
+void SciTEWin::SysColourChanged(WPARAM wParam, LPARAM lParam) {
+	CheckAppearanceChanged();
+	wEditor.Send(WM_SYSCOLORCHANGE, wParam, lParam);
+	wOutput.Send(WM_SYSCOLORCHANGE, wParam, lParam);
+}
+
+void SciTEWin::ScaleChanged(WPARAM wParam, LPARAM lParam) {
+	const int scale = LOWORD(wParam) * 100 / 96;
+	if (SetScaleFactor(scale)) {
+		wEditor.Send(WM_DPICHANGED, wParam, lParam);
+		wOutput.Send(WM_DPICHANGED, wParam, lParam);
+		ReloadProperties();
+		const RECT *rect = reinterpret_cast<const RECT *>(lParam);
+		::SetWindowPos(MainHWND(), NULL, rect->left, rect->top, rect->right - rect->left, rect->bottom - rect->top,
+			SWP_NOZORDER | SWP_NOACTIVATE);
+
+		if (!fnSystemParametersInfoForDpi) {
+			fnSystemParametersInfoForDpi = DLLFunction<SystemParametersInfoForDpiSig>(
+				L"user32.dll", "SystemParametersInfoForDpi");
+		}
+
+		if (fnSystemParametersInfoForDpi) {
+			LOGFONTW lfIconTitle{};
+			if (fnSystemParametersInfoForDpi(SPI_GETICONTITLELOGFONT, sizeof(lfIconTitle),
+				&lfIconTitle, FALSE, LOWORD(wParam))) {
+				const HFONT fontTabsPrevious = fontTabs;
+				fontTabs = ::CreateFontIndirectW(&lfIconTitle);
+				SetWindowFont(HwndOf(wTabBar), fontTabs, 0);
+				::DeleteObject(fontTabsPrevious);
+				SizeSubWindows();
+			}
+		}
+	}
+}
+
 inline bool KeyMatch(const std::string &sKey, int keyval, int modifiers) {
 	return SciTEKeys::MatchKeyCode(
 		       SciTEKeys::ParseKeyCode(sKey.c_str()), keyval, modifiers);
@@ -1993,18 +2100,15 @@ LRESULT SciTEWin::WndProc(UINT iMessage, WPARAM wParam, LPARAM lParam) {
 			break;
 
 		case WM_SETTINGCHANGE:
-			wEditor.Send(WM_SETTINGCHANGE, wParam, lParam);
-			wOutput.Send(WM_SETTINGCHANGE, wParam, lParam);
+			SettingChanged(wParam, lParam);
 			break;
 
 		case WM_SYSCOLORCHANGE:
-			wEditor.Send(WM_SYSCOLORCHANGE, wParam, lParam);
-			wOutput.Send(WM_SYSCOLORCHANGE, wParam, lParam);
+			SysColourChanged(wParam, lParam);
 			break;
 
 		case WM_DPICHANGED:
-			SetScaleFactor(LOWORD(wParam) * 100 / 96);
-			ReadProperties();
+			ScaleChanged(wParam, lParam);
 			return ::DefWindowProcW(MainHWND(), iMessage, wParam, lParam);
 
 		case WM_ACTIVATEAPP:
@@ -2220,6 +2324,10 @@ static void RestrictDLLPath() noexcept {
 	}
 }
 
+#ifdef STATIC_BUILD
+extern "C" Scintilla::ILexer5 * __stdcall CreateLexer(const char *name);
+#endif
+
 #if defined(_MSC_VER) && defined(_PREFAST_)
 // Stop warning for WinMain. Microsoft headers have annotations and MinGW don't.
 #pragma warning(disable: 28251)
@@ -2243,19 +2351,21 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
 
 	SciTEWin::Register(hInstance);
 #ifdef STATIC_BUILD
-
 	Scintilla_LinkLexers();
 	Scintilla_RegisterClasses(hInstance);
+	LexillaSetDefaultDirectory(GetSciTEPath(FilePath()).AsUTF8());
+	LexillaSetDefault([](const char *name) {
+		return CreateLexer(name);
+	});
 #else
 
-#ifdef LOAD_SCINTILLA
-	HMODULE hmod = ::LoadLibrary(TEXT("Scintilla.DLL"));
-#else
-	HMODULE hmod = ::LoadLibrary(TEXT("SciLexer.DLL"));
-#endif
-	if (hmod == NULL)
-		::MessageBox(NULL, TEXT("The Scintilla DLL could not be loaded.  SciTE will now close"),
+	HMODULE hmod = ::LoadLibrary(scintillaName);
+	if (!hmod) {
+		GUI::gui_string explanation = scintillaName;
+		explanation += TEXT(" could not be loaded.  SciTE will now close");
+		::MessageBox(NULL, explanation.c_str(),
 			     TEXT("Error loading Scintilla"), MB_OK | MB_ICONERROR);
+	}
 #endif
 
 	uintptr_t result = 0;

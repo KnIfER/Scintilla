@@ -65,6 +65,7 @@ typedef void *HTHEME;
 #include <shlobj.h>
 
 #include "ILoader.h"
+#include "ILexer.h"
 
 #include "ScintillaTypes.h"
 #include "ScintillaMessages.h"
@@ -78,6 +79,7 @@ typedef void *HTHEME;
 #include "StringList.h"
 #include "StringHelpers.h"
 #include "FilePath.h"
+#include "LexillaLibrary.h"
 #include "StyleDefinition.h"
 #include "PropSetFile.h"
 #include "StyleWriter.h"
@@ -219,11 +221,14 @@ protected:
 
 	void ReadLocalization() override;
 	void GetWindowPosition(int *left, int *top, int *width, int *height, int *maximize) override;
-	void SetScaleFactor(int scale);
+	int GetScaleFactor() noexcept;
+	bool SetScaleFactor(int scale);
 
 	void ReadEmbeddedProperties() override;
 	void ReadPropertiesInitial() override;
 	void ReadProperties() override;
+
+	SystemAppearance CurrentAppearance() const noexcept override;
 
 	void TimerStart(int mask) override;
 	void TimerEnd(int mask) override;
@@ -277,6 +282,9 @@ protected:
 	void DropFiles(HDROP hdrop);
 	void MinimizeToTray();
 	void RestoreFromTray();
+	void SettingChanged(WPARAM wParam, LPARAM lParam);
+	void SysColourChanged(WPARAM wParam, LPARAM lParam);
+	void ScaleChanged(WPARAM wParam, LPARAM lParam);
 	static GUI::gui_string ProcessArgs(const GUI::gui_char *cmdLine);
 	void QuitProgram() override;
 

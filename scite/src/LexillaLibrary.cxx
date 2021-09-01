@@ -11,8 +11,8 @@
 #include <cstring>
 
 #include <string>
+#include <string_view>
 #include <vector>
-#include <chrono>
 
 #if !_WIN32
 #include <dlfcn.h>
@@ -22,9 +22,6 @@
 
 #include "ILexer.h"
 
-#include "GUI.h"
-
-#include "FilePath.h"
 #include "LexillaLibrary.h"
 
 namespace {
@@ -33,7 +30,9 @@ namespace {
 #define EXT_LEXER_DECL __stdcall
 typedef FARPROC Function;
 typedef HMODULE Module;
-constexpr const char *extensionSO = ".dll"; 
+constexpr const char *extensionSO = ".dll";
+constexpr const char *pathSeparator = "\\";
+constexpr const char *defaultName = "lexilla";
 #else
 #define EXT_LEXER_DECL
 typedef void *Function;
@@ -43,6 +42,8 @@ constexpr const char *extensionSO = ".dylib";
 #else
 constexpr const char *extensionSO = ".so";
 #endif
+constexpr const char *pathSeparator = "/";
+constexpr const char *defaultName = "liblexilla";
 #endif
 
 typedef Scintilla::ILexer5 *(EXT_LEXER_DECL *CreateLexerFn)(const char *name);
@@ -57,7 +58,20 @@ T FunctionPointer(Function function) noexcept {
 	return fp;
 }
 
-FilePathSet lastLoaded;
+#if _WIN32
+
+std::wstring WideStringFromUTF8(std::string_view sv) {
+	const int sLength = static_cast<int>(sv.length());
+	const int cchWide = ::MultiByteToWideChar(CP_UTF8, 0, sv.data(), sLength, nullptr, 0);
+	std::wstring sWide(cchWide, 0);
+	::MultiByteToWideChar(CP_UTF8, 0, sv.data(), sLength, &sWide[0], cchWide);
+	return sWide;
+}
+
+#endif
+
+std::string directoryLoadDefault;
+std::string lastLoaded;
 std::vector<CreateLexerFn> fnCLs;
 
 Function FindSymbol(Module m, const char *symbol) noexcept {
@@ -68,42 +82,73 @@ Function FindSymbol(Module m, const char *symbol) noexcept {
 #endif
 }
 
+LexillaCreatePointer pCreateLexerDefault = nullptr;
+
 }
 
-bool LexillaLoad(FilePathSet sharedLibraries) {
-	if (lastLoaded != sharedLibraries) {
-		fnCLs.clear();
-		for (FilePath sharedLibrary : sharedLibraries) {
-			if (!sharedLibrary.Extension().IsSet()) {
-				std::string slu = sharedLibrary.AsUTF8();
-				slu.append(extensionSO);
-				sharedLibrary.Set(GUI::StringFromUTF8(slu));
-			}
+void LexillaSetDefault(LexillaCreatePointer pCreate) {
+	pCreateLexerDefault = pCreate;
+}
+
+void LexillaSetDefaultDirectory(std::string_view directory) {
+	directoryLoadDefault = directory;
+}
+
+bool LexillaLoad(std::string_view sharedLibraryPaths) {
+	if (sharedLibraryPaths == lastLoaded) {
+		return !fnCLs.empty();
+	}
+
+	std::string_view paths = sharedLibraryPaths;
+
+	fnCLs.clear();
+	while (!paths.empty()) {
+		const size_t separator = paths.find_first_of(';');
+		std::string path(paths.substr(0, separator));
+		if (separator == std::string::npos) {
+			paths.remove_prefix(paths.size());
+		} else {
+			paths.remove_prefix(separator + 1);
+		}
+		if (path == ".") {
+			path = directoryLoadDefault;
+			path += pathSeparator;
+			path += defaultName;
+		}
+		if (path.find('.') == std::string::npos) {
+			// No '.' in path so add extension
+			path.append(extensionSO);
+		}
 #if _WIN32
-			Module lexillaDL = ::LoadLibraryW(sharedLibrary.AsInternal());
+		// Convert from UTF-8 to wide characters
+		std::wstring wsPath = WideStringFromUTF8(path);
+		Module lexillaDL = ::LoadLibraryW(wsPath.c_str());
 #else
-			Module lexillaDL = dlopen(sharedLibrary.AsInternal(), RTLD_LAZY);
+		Module lexillaDL = dlopen(path.c_str(), RTLD_LAZY);
 #endif
-			if (lexillaDL) {
-				CreateLexerFn fnCL = FunctionPointer<CreateLexerFn>(
-					FindSymbol(lexillaDL, "CreateLexer"));
-				if (fnCL) {
-					fnCLs.push_back(fnCL);
-				}
+		if (lexillaDL) {
+			CreateLexerFn fnCL = FunctionPointer<CreateLexerFn>(
+				FindSymbol(lexillaDL, "CreateLexer"));
+			if (fnCL) {
+				fnCLs.push_back(fnCL);
 			}
 		}
-		lastLoaded = sharedLibraries;
 	}
+	lastLoaded = sharedLibraryPaths;
 
 	return !fnCLs.empty();
 }
 
-Scintilla::ILexer5 *LexillaCreateLexer(const std::string &languageName) {
+Scintilla::ILexer5 *LexillaCreateLexer(std::string_view languageName) {
+	std::string sLanguageName(languageName);	// Ensure NUL-termination
 	for (CreateLexerFn fnCL : fnCLs) {
-		Scintilla::ILexer5 *pLexer = fnCL(languageName.c_str());
+		Scintilla::ILexer5 *pLexer = fnCL(sLanguageName.c_str());
 		if (pLexer) {
 			return pLexer;
 		}
+	}
+	if (pCreateLexerDefault) {
+		return pCreateLexerDefault(sLanguageName.c_str());
 	}
 	return nullptr;
 }

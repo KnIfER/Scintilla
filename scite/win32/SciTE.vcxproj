@@ -207,6 +207,7 @@
     <ClCompile Include="..\..\scintilla\win32\HanjaDic.cxx" />
     <ClCompile Include="..\..\scintilla\win32\PlatWin.cxx" />
     <ClCompile Include="..\..\scintilla\win32\ScintillaWin.cxx" />
+    <ClCompile Include="..\..\scintilla\lexilla\src\Lexilla.cxx" />
     <ClCompile Include="..\src\*.cxx" />
     <ClCompile Include="..\win32\*.cxx" />
     <ClCompile Include="..\lua\src\*.c" />
@@ -224,6 +225,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Win32\SciBall.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="SciTE.exe.manifest" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -6,6 +6,8 @@
 #     nmake -f scite.mak
 # For debug versions define DEBUG on the command line.
 # For a build without Lua, define NO_LUA on the command line.
+# For a build with no lexers, loading Scintilla.DLL instead of SciLexer.DLL,
+# define LOAD_SCINTILLA on the command line.
 # The main makefile uses mingw32 gcc and may be more current than this file.
 
 .SUFFIXES: .cxx .properties .dll
@@ -16,7 +18,7 @@ DIR_SCINTILLA_BIN=$(DIR_SCINTILLA)\bin
 
 PROG=$(DIR_BIN)\SciTE.exe
 PROGSTATIC=$(DIR_BIN)\Sc1.exe
-DLLS=$(DIR_BIN)\Scintilla.dll $(DIR_BIN)\SciLexer.dll
+DLLS=$(DIR_BIN)\Scintilla.dll $(DIR_BIN)\SciLexer.dll $(DIR_BIN)\Lexilla.dll
 
 WIDEFLAGS=-DUNICODE -D_UNICODE
 
@@ -38,6 +40,10 @@ SUBSYSTEM=-SUBSYSTEM:WINDOWS,10.00
 
 CXXFLAGS=-Zi -TP -MP -W4 -EHsc -Zc:forScope -Zc:wchar_t -std:c++17 -D_CRT_SECURE_NO_DEPRECATE=1 -D_CRT_NONSTDC_NO_DEPRECATE $(WIDEFLAGS) $(ADD_DEFINE)
 CCFLAGS=-TC -MP -W3 -wd4244 -D_CRT_SECURE_NO_DEPRECATE=1 -DLUA_USER_H=\"scite_lua_win.h\" $(ADD_DEFINE)
+
+!IFDEF LOAD_SCINTILLA
+CXXFLAGS=$(CXXFLAGS) -DLOAD_SCINTILLA
+!ENDIF
 
 CXXDEBUG=-Od -MTd -DDEBUG
 # Don't use "-MD", even with "-D_STATIC_CPPLIB" because it links to MSVCR71.DLL
@@ -106,6 +112,7 @@ OBJS=\
 	SciTEWin.obj
 
 LIBSCI=$(DIR_SCINTILLA_BIN)\libscintilla.lib
+LIBLEX=$(DIR_SCINTILLA_BIN)\liblexilla.lib
 
 OBJSSTATIC=$(SHAREDOBJS) Sc1.obj
 
@@ -205,7 +212,7 @@ Sc1Res.res: SciTERes.rc ..\src\SciTE.h SciTE.exe.manifest
 $(PROG): $(OBJS) SciTERes.res
 	$(LD) $(LDFLAGS) -OUT:$@ $** $(LIBS)
 
-$(PROGSTATIC): $(OBJSSTATIC) $(LIBSCI) Sc1Res.res
+$(PROGSTATIC): $(OBJSSTATIC) $(LIBSCI) $(LIBLEX) Sc1Res.res
 	$(LD) $(LDFLAGS) -OUT:$@ $** $(LIBS)
 
 # Define how to build all the objects and what they depend on

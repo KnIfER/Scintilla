@@ -44,6 +44,10 @@ rem Target 3: Normal gcc build
 mingw32-make -j
 @if ERRORLEVEL 2 goto ERROR
 @popd
+@pushd scintilla\lexilla\src
+mingw32-make -j
+@if ERRORLEVEL 2 goto ERROR
+@popd
 @pushd scintilla\test
 pythonw simpleTests.py
 pythonw lexTests.py
@@ -62,6 +66,10 @@ rem Target 4: Microsoft VC++ build
 @pushd scintilla\win32
 cl
 nmake -f scintilla.mak QUIET=1
+@if ERRORLEVEL 2 goto ERROR
+@popd
+@pushd scintilla\lexilla\src
+nmake -f lexilla.mak QUIET=1
 @if ERRORLEVEL 2 goto ERROR
 @popd
 @pushd scintilla\test
@@ -95,7 +103,7 @@ rem Target 6: GTK+ version using gcc on scintilla\gtk\makefile
 @pushd scintilla\gtk
 set PATH=c:\opt\gtk\bin;%PATH%
 rem -Wno-parentheses is temporary for GTK+ header gtkfilechooserbutton.h
-mingw32-make -j CXXFLAGS=-Wno-parentheses
+mingw32-make -j CXXFLAGS=-Wno-parentheses static
 @if ERRORLEVEL 2 goto ERROR
 @popd ..\..
 @rem
@@ -136,6 +144,10 @@ rem ************************************************************
 rem Target 9: Clang build
 @call scite\scripts\clearboth
 @pushd scintilla\win32
+mingw32-make CLANG=1 -j
+@if ERRORLEVEL 2 goto ERROR
+@popd
+@pushd scintilla\lexilla\src
 mingw32-make CLANG=1 -j
 @if ERRORLEVEL 2 goto ERROR
 @popd

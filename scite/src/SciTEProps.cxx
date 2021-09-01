@@ -141,6 +141,11 @@ void SciTEBase::ReadEnvironment() {
 Read global and user properties files.
 */
 void SciTEBase::ReadGlobalPropFile() {
+	// Appearance and Contrast may be read in embedded or global properties
+	// so set them in deepest property set propsPlatform.
+	propsPlatform.Set("Appearance", StdStringFromInteger(appearance.dark));
+	propsPlatform.Set("Contrast", StdStringFromInteger(appearance.highContrast));
+
 	std::string excludes;
 	std::string includes;
 
@@ -662,14 +667,7 @@ void SciTEBase::ReadProperties() {
 		extender->Clear();
 
 	const std::string lexillaPath = props.GetString("lexilla.path");
-	if (lexillaPath.length()) {
-		std::vector<std::string> paths = StringSplit(lexillaPath, ';');
-		FilePathSet fps;
-		for (std::string path : paths) {
-			fps.push_back(FilePath(GUI::StringFromUTF8(path)));
-		}
-		LexillaLoad(fps);
-	}
+	LexillaLoad(lexillaPath.empty() ? "." : lexillaPath);
 
 	const std::string fileNameForExtension = ExtensionFileName();
 

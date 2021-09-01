@@ -3,6 +3,8 @@
 # The License.txt file describes the conditions under which this software may be distributed.
 # This makefile assumes the mingw32 version of GCC 4.x is used and changes will
 # be needed to use other compilers.
+# For a build with no lexers, loading Scintilla.DLL instead of SciLexer.DLL,
+# define LOAD_SCINTILLA on the command line.
 
 .PHONY: all clean analyze depend
 
@@ -75,7 +77,7 @@ vpath %.h ../src ../../scintilla/include
 vpath %.cxx ../src
 vpath %.a ../../scintilla/bin
 
-LIBS += -lgdi32 -luser32 -limm32 -lole32 -luuid -loleaut32 -lmsimg32 -lshell32 -lcomdlg32 -lcomctl32
+LIBS += -lgdi32 -luser32 -limm32 -lole32 -luuid -loleaut32 -lmsimg32 -lshell32 -lcomdlg32 -lcomctl32 -ladvapi32
 
 CXXFLAGS += --std=c++17
 
@@ -104,6 +106,10 @@ INCLUDES += -I ../lua/src
 CFLAGS += -DLUA_USER_H=\"scite_lua_win.h\"
 else
 DEFINES += -DNO_LUA
+endif
+
+ifdef LOAD_SCINTILLA
+DEFINES += -DLOAD_SCINTILLA
 endif
 
 INCLUDES += -I ../../scintilla/include -I ../src
@@ -157,7 +163,7 @@ OTHER_OBJS = $(SHAREDOBJS) $(LUA_OBJS) SciTERes.o SciTEWin.o
 
 OBJS = Credits.o $(OTHER_OBJS)
 
-DLLS=../bin/Scintilla.dll ../bin/SciLexer.dll
+DLLS=../bin/Scintilla.dll ../bin/SciLexer.dll ../bin/lexilla.dll
 
 NOTBINPROPS=SciTE.properties Embedded.properties
 PROPS=$(addprefix ../bin/,$(filter-out $(NOTBINPROPS), $(notdir $(wildcard ../src/*.properties))))
@@ -188,6 +194,7 @@ OBJSSTATIC = \
 	Sc1.o \
 	Sc1Res.o \
 	libscintilla.a \
+	liblexilla.a \
 	$(LUA_OBJS)
 
 $(PROGSTATIC): $(OBJSSTATIC)
