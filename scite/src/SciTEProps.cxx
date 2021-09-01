@@ -13,11 +13,13 @@
 #include <ctime>
 #include <clocale>
 
+#include <tuple>
 #include <string>
 #include <string_view>
 #include <vector>
 #include <map>
 #include <set>
+#include <optional>
 #include <algorithm>
 #include <memory>
 #include <chrono>
@@ -40,7 +42,7 @@
 #include "GUI.h"
 #include "ScintillaWindow.h"
 
-#if defined(__unix__) || defined(__APPLE__)
+#if (defined(__unix__) || defined(__APPLE__)) && !defined(QT_QML)
 
 const GUI::gui_char menuAccessIndicator[] = GUI_TEXT("_");
 
@@ -127,14 +129,8 @@ void SciTEBase::ReadEnvironment() {
 	char **e = _environ;
 #endif
 	for (; e && *e; e++) {
-		char key[1024] = "";
-		char *k = *e;
-		char *v = strchr(k, '=');
-		if (v && (static_cast<size_t>(v - k) < sizeof(key))) {
-			memcpy(key, k, v - k);
-			key[v - k] = '\0';
-			propsPlatform.Set(key, v + 1);
-		}
+		const auto [key, value] = ViewSplit(*e, '=');
+		propsPlatform.Set(key, value);
 	}
 }
 
@@ -163,7 +159,7 @@ void SciTEBase::ReadGlobalPropFile() {
 		excludes = excludesRead;
 		includes = includesRead;
 
-		filter.SetFilter(excludes.c_str(), includes.c_str());
+		filter.SetFilter(excludes, includes);
 
 		importFiles.clear();
 
@@ -236,6 +232,33 @@ SA::Colour ColourOfProperty(const PropSetFile &props, const char *key, SA::Colou
 	return colourDefault;
 }
 
+SA::ColourAlpha ColourAlphaOfProperty(const PropSetFile &props, const char *key, SA::ColourAlpha colourDefault) {
+	std::string colour = props.GetExpandedString(key);
+	if (colour.length()) {
+		return ColourAlphaFromString(colour);
+	}
+	return colourDefault;
+}
+
+namespace {
+
+void OptionalSetColour(GUI::ScintillaWindow &scintilla, SA::Element element, const PropSetFile &props, const char *key) {
+	std::string colour = props.GetExpandedString(key);
+	if (colour.length()) {
+		const SA::Colour colourElement = ColourAlphaFromString(colour);
+		scintilla.SetElementColour(element, colourElement);
+	} else {
+		scintilla.ResetElementColour(element);
+	}
+}
+
+}
+
+void SciTEBase::SetElementColour(SA::Element element, const char *key) {
+	OptionalSetColour(wEditor, element, props, key);
+	OptionalSetColour(wOutput, element, props, key);
+}
+
 /**
  * Put the next property item from the given property string
  * into the buffer pointed by @a pPropItem.
@@ -272,10 +295,8 @@ std::string SciTEBase::StyleString(const char *lang, int style) const {
 }
 
 StyleDefinition SciTEBase::StyleDefinitionFor(int style) {
-	const std::string languageName = !StartsWith(language, "lpeg_") ? language : "lpeg";
-
 	const std::string ssDefault = StyleString("*", style);
-	std::string ss = StyleString(languageName.c_str(), style);
+	std::string ss = StyleString(language.c_str(), style);
 
 	if (!subStyleBases.empty()) {
 		const int baseStyle = wEditor.StyleFromSubStyle(style);
@@ -288,7 +309,7 @@ StyleDefinition SciTEBase::StyleDefinitionFor(int style) {
 			const int subStyle = style - (subStylesStart + distanceSecondary);
 			if (subStyle < subStylesLength) {
 				char key[200];
-				sprintf(key, "style.%s.%0d.%0d", languageName.c_str(), baseStyle, subStyle + 1);
+				sprintf(key, "style.%s.%0d.%0d", language.c_str(), baseStyle, subStyle + 1);
 				ss = props.GetNewExpandString(key);
 			}
 		}
@@ -382,12 +403,13 @@ void SciTEBase::ForwardPropertyToEditor(const char *key) {
 	}
 }
 
-void SciTEBase::DefineMarker(SA::MarkerOutline marker, SA::MarkerSymbol markerType, SA::Colour fore, SA::Colour back, SA::Colour backSelected) {
+void SciTEBase::DefineMarker(SA::MarkerOutline marker, SA::MarkerSymbol markerType, MarkerAppearance markerAppearance) {
 	const int markerNumber = static_cast<int>(marker);
 	wEditor.MarkerDefine(markerNumber, markerType);
-	wEditor.MarkerSetFore(markerNumber, fore);
-	wEditor.MarkerSetBack(markerNumber, back);
-	wEditor.MarkerSetBackSelected(markerNumber, backSelected);
+	wEditor.MarkerSetForeTranslucent(markerNumber, markerAppearance.fore);
+	wEditor.MarkerSetBackTranslucent(markerNumber, markerAppearance.back);
+	wEditor.MarkerSetBackSelectedTranslucent(markerNumber, markerAppearance.backSelected);
+	wEditor.MarkerSetStrokeWidth(markerNumber, markerAppearance.strokeWidth);
 }
 
 void SciTEBase::ReadAPI(const std::string &fileNameForExtension) {
@@ -412,7 +434,7 @@ void SciTEBase::ReadAPI(const std::string &fileNameForExtension) {
 
 std::string SciTEBase::FindLanguageProperty(const char *pattern, const char *defaultValue) {
 	std::string key = pattern;
-	Substitute(key, "*", language.c_str());
+	Substitute(key, "*", language);
 	std::string ret = props.GetExpandedString(key.c_str());
 	if (ret == "")
 		ret = props.GetExpandedString(pattern);
@@ -481,6 +503,8 @@ static const char *propertiesToForward[] = {
 	"fold.html.preprocessor",
 	"fold.hypertext.comment",
 	"fold.hypertext.heredoc",
+	"fold.julia.docstring",
+	"fold.julia.syntax.based",
 	"fold.perl.at.else",
 	"fold.perl.comment.explicit",
 	"fold.perl.package",
@@ -530,6 +554,8 @@ static const char *propertiesToForward[] = {
 	"lexer.html.mako",
 	"lexer.json.allow.comments",
 	"lexer.json.escape.sequence",
+	"lexer.julia.highlight.lexerror",
+	"lexer.julia.highlight.typeannotation",
 	"lexer.metapost.comment.process",
 	"lexer.metapost.interface.default",
 	"lexer.nim.raw.strings.highlight.ident",
@@ -667,6 +693,61 @@ std::string SciTEBase::GetFileNameProperty(const char *name) {
 	}
 }
 
+void SciTEBase::SetRepresentations() {
+	wEditor.ClearAllRepresentations();
+	const std::string representations = props.GetExpandedString("representations");
+	std::string_view reprs = representations;
+
+	bool colourSet = false;
+	SA::Colour colourRepresentation = 0;
+
+	bool appearanceSet = false;
+	SA::RepresentationAppearance appearanceRepresentation = SA::RepresentationAppearance::Blob;
+
+	while (!reprs.empty()) {
+		if (reprs[0] == ',') {
+			reprs.remove_prefix(1);
+		}
+		if (!reprs.empty()) {
+			const std::string_view item = reprs.substr(0, reprs.find_first_of(','));
+			if (!item.empty()) {
+				if (item[0] == '!') {
+					// Appearance
+					if (item.length() == 1) {
+						appearanceSet = false;
+					} else {
+						appearanceSet = true;
+						const std::string sAppearance(item.substr(1));
+						appearanceRepresentation = static_cast<SA::RepresentationAppearance>(IntegerFromString(sAppearance, 0));
+					}
+				} else if (item[0] == '#') {
+					// Colour
+					if (item.length() == 1) {
+						colourSet = false;
+					} else {
+						colourSet = true;
+						colourRepresentation = ColourAlphaFromString(item);
+					}
+				} else {
+					const size_t eqPos = item.find_first_of('=');
+					if (eqPos != std::string_view::npos) {
+						const std::string target = UnicodeUnEscape(item.substr(0, eqPos));
+						const std::string representation = UnicodeUnEscape(item.substr(eqPos+1));
+						wEditor.SetRepresentation(target.c_str(), representation.c_str());
+						if (appearanceSet) {
+							wEditor.SetRepresentationAppearance(target.c_str(), appearanceRepresentation);
+						}
+						if (colourSet) {
+							wEditor.SetRepresentationColour(target.c_str(), colourRepresentation);
+						}
+					}
+				}
+				reprs.remove_prefix(item.length());
+			}
+		}
+	}
+}
+
 void SciTEBase::ReadProperties() {
 	if (extender)
 		extender->Clear();
@@ -684,10 +765,6 @@ void SciTEBase::ReadProperties() {
 
 	const std::string fileNameForExtension = ExtensionFileName();
 
-	std::string modulePath = props.GetNewExpandString("lexerpath.",
-				 fileNameForExtension.c_str());
-	if (modulePath.length())
-		wEditor.LoadLexerLibrary(modulePath.c_str());
 	language = props.GetNewExpandString("lexer.", fileNameForExtension.c_str());
 	if (language.empty()) {
 		language = "null";
@@ -805,6 +882,8 @@ void SciTEBase::ReadProperties() {
 
 	characterSet = static_cast<SA::CharacterSet>(props.GetInt("character.set", static_cast<int>(SA::CharacterSet::Default)));
 
+	SetRepresentations();
+
 #if defined(__unix__) || defined(__APPLE__)
 	const std::string localeCType = props.GetString("LC_CTYPE");
 	if (localeCType.length())
@@ -825,9 +904,6 @@ void SciTEBase::ReadProperties() {
 
 	wrapStyle = static_cast<SA::Wrap>(props.GetInt("wrap.style", static_cast<int>(SA::Wrap::Word)));
 
-	CallChildren(SA::Message::SetCaretFore,
-		     ColourOfProperty(props, "caret.fore", ColourRGB(0, 0, 0)));
-
 	CallChildren(SA::Message::SetMouseSelectionRectangularSwitch, props.GetInt("selection.rectangular.switch.mouse", 0));
 	CallChildren(SA::Message::SetMultipleSelection, props.GetInt("selection.multiple", 1));
 	CallChildren(SA::Message::SetAdditionalSelectionTyping, props.GetInt("selection.additional.typing", 1));
@@ -837,21 +913,34 @@ void SciTEBase::ReadProperties() {
 
 	wEditor.SetMouseDwellTime(props.GetInt("dwell.period", SA::TimeForever));
 
+	SetElementColour(SA::Element::Caret, "caret.fore");
+	SetElementColour(SA::Element::CaretAdditional, "caret.additional.fore");
+
 	const SA::CaretStyle caretStyle = static_cast<SA::CaretStyle>(props.GetInt("caret.style", static_cast<int>(SA::CaretStyle::Line)));
 	wEditor.SetCaretStyle(caretStyle);
 	wOutput.SetCaretStyle(caretStyle);
 	wEditor.SetCaretWidth(props.GetInt("caret.width", 1));
 	wOutput.SetCaretWidth(props.GetInt("caret.width", 1));
 
-	std::string caretLineBack = props.GetExpandedString("caret.line.back");
-	if (caretLineBack.length()) {
-		wEditor.SetCaretLineVisible(true);
-		wEditor.SetCaretLineBack(ColourFromString(caretLineBack));
+	const std::string caretLineLayer = props.GetExpandedString("caret.line.layer");
+	if (caretLineLayer.empty()) {
+		std::string caretLineBack = props.GetExpandedString("caret.line.back");
+		if (caretLineBack.length()) {
+			wEditor.SetCaretLineVisible(true);
+			wEditor.SetCaretLineBack(ColourFromString(caretLineBack));
+		} else {
+			wEditor.SetCaretLineVisible(false);
+		}
+		wEditor.SetCaretLineBackAlpha(
+			static_cast<SA::Alpha>(props.GetInt("caret.line.back.alpha", static_cast<int>(SA::Alpha::NoAlpha))));
 	} else {
-		wEditor.SetCaretLineVisible(false);
+		// New scheme
+		const int layer = IntegerFromString(caretLineLayer, 0);
+		CallChildren(SA::Message::SetCaretLineLayer, layer);
+		SetElementColour(SA::Element::CaretLineBack, "caret.line.back");
+		const int caretLineFrame = props.GetInt("caret.line.frame");
+		CallChildren(SA::Message::SetCaretLineFrame, caretLineFrame);
 	}
-	wEditor.SetCaretLineBackAlpha(
-		static_cast<SA::Alpha>(props.GetInt("caret.line.back.alpha", static_cast<int>(SA::Alpha::NoAlpha))));
 
 	int indicatorsAlpha = props.GetInt("indicators.alpha", 30);
 	if (indicatorsAlpha < 0 || 255 < indicatorsAlpha) // If invalid value,
@@ -913,35 +1002,52 @@ void SciTEBase::ReadProperties() {
 	wEditor.SetEdgeColour(
 		ColourOfProperty(props, "edge.colour", ColourRGB(0xff, 0xda, 0xda)));
 
-	std::string selFore = props.GetExpandedString("selection.fore");
-	if (selFore.length()) {
-		CallChildren(SA::Message::SetSelFore, 1, ColourFromString(selFore));
-	} else {
-		CallChildren(SA::Message::SetSelFore, 0, 0);
-	}
-	std::string selBack = props.GetExpandedString("selection.back");
-	if (selBack.length()) {
-		CallChildren(SA::Message::SetSelBack, 1, ColourFromString(selBack));
-	} else {
-		if (selFore.length())
-			CallChildren(SA::Message::SetSelBack, 0, 0);
-		else	// Have to show selection somehow
-			CallChildren(SA::Message::SetSelBack, 1, ColourRGB(0xC0, 0xC0, 0xC0));
-	}
-	constexpr int NoAlpha = static_cast<int>(SA::Alpha::NoAlpha);
-	const int selectionAlpha = props.GetInt("selection.alpha", NoAlpha);
-	CallChildren(SA::Message::SetSelAlpha, selectionAlpha);
+	const std::string selectionLayer = props.GetExpandedString("selection.layer");
+	if (selectionLayer.empty()) {
 
-	std::string selAdditionalFore = props.GetString("selection.additional.fore");
-	if (selAdditionalFore.length()) {
-		CallChildren(SA::Message::SetAdditionalSelFore, ColourFromString(selAdditionalFore));
+		std::string selFore = props.GetExpandedString("selection.fore");
+		if (selFore.length()) {
+			CallChildren(SA::Message::SetSelFore, 1, ColourFromString(selFore));
+		} else {
+			CallChildren(SA::Message::SetSelFore, 0, 0);
+		}
+		std::string selBack = props.GetExpandedString("selection.back");
+		if (selBack.length()) {
+			CallChildren(SA::Message::SetSelBack, 1, ColourFromString(selBack));
+		} else {
+			if (selFore.length())
+				CallChildren(SA::Message::SetSelBack, 0, 0);
+			else	// Have to show selection somehow
+				CallChildren(SA::Message::SetSelBack, 1, ColourRGB(0xC0, 0xC0, 0xC0));
+		}
+		constexpr int NoAlpha = static_cast<int>(SA::Alpha::NoAlpha);
+		const int selectionAlpha = props.GetInt("selection.alpha", NoAlpha);
+		CallChildren(SA::Message::SetSelAlpha, selectionAlpha);
+
+		std::string selAdditionalFore = props.GetString("selection.additional.fore");
+		if (selAdditionalFore.length()) {
+			CallChildren(SA::Message::SetAdditionalSelFore, ColourFromString(selAdditionalFore));
+		}
+		std::string selAdditionalBack = props.GetString("selection.additional.back");
+		if (selAdditionalBack.length()) {
+			CallChildren(SA::Message::SetAdditionalSelBack, ColourFromString(selAdditionalBack));
+		}
+		const int selectionAdditionalAlpha = (selectionAlpha == NoAlpha) ? NoAlpha : selectionAlpha / 2;
+		CallChildren(SA::Message::SetAdditionalSelAlpha, props.GetInt("selection.additional.alpha", selectionAdditionalAlpha));
+
+	} else {
+		// New scheme
+		const int layer = IntegerFromString(selectionLayer, 0);
+		CallChildren(SA::Message::SetSelectionLayer, layer);
+		SetElementColour(SA::Element::SelectionText, "selection.fore");
+		SetElementColour(SA::Element::SelectionBack, "selection.back");
+		SetElementColour(SA::Element::SelectionAdditionalText, "selection.additional.fore");
+		SetElementColour(SA::Element::SelectionAdditionalBack, "selection.additional.back");
+		SetElementColour(SA::Element::SelectionSecondaryText, "selection.secondary.fore");
+		SetElementColour(SA::Element::SelectionSecondaryBack, "selection.secondary.back");
+		SetElementColour(SA::Element::SelectionInactiveText, "selection.inactive.fore");
+		SetElementColour(SA::Element::SelectionInactiveBack, "selection.inactive.back");
 	}
-	std::string selAdditionalBack = props.GetString("selection.additional.back");
-	if (selAdditionalBack.length()) {
-		CallChildren(SA::Message::SetAdditionalSelBack, ColourFromString(selAdditionalBack));
-	}
-	const int selectionAdditionalAlpha = (selectionAlpha == NoAlpha) ? NoAlpha : selectionAlpha / 2;
-	CallChildren(SA::Message::SetAdditionalSelAlpha, props.GetInt("selection.additional.alpha", selectionAdditionalAlpha));
 
 	foldColour = props.GetExpandedString("fold.margin.colour");
 	if (foldColour.length()) {
@@ -956,18 +1062,10 @@ void SciTEBase::ReadProperties() {
 		CallChildren(SA::Message::SetFoldMarginHiColour, 0, 0);
 	}
 
-	std::string whitespaceFore = props.GetExpandedString("whitespace.fore");
-	if (whitespaceFore.length()) {
-		CallChildren(SA::Message::SetWhitespaceFore, 1, ColourFromString(whitespaceFore));
-	} else {
-		CallChildren(SA::Message::SetWhitespaceFore, 0, 0);
-	}
-	std::string whitespaceBack = props.GetExpandedString("whitespace.back");
-	if (whitespaceBack.length()) {
-		CallChildren(SA::Message::SetWhitespaceBack, 1, ColourFromString(whitespaceBack));
-	} else {
-		CallChildren(SA::Message::SetWhitespaceBack, 0, 0);
-	}
+	SetElementColour(SA::Element::WhiteSpace, "whitespace.fore");
+	SetElementColour(SA::Element::WhiteSpaceBack, "whitespace.back");
+
+	CallChildren(SA::Message::SetWhitespaceSize, props.GetInt("whitespace.size", 1));
 
 	char bracesStyleKey[200];
 	sprintf(bracesStyleKey, "braces.%s.style", language.c_str());
@@ -1021,12 +1119,18 @@ void SciTEBase::ReadProperties() {
 		autoCompleteIgnoreCase = sval == "1";
 	wEditor.AutoCSetIgnoreCase(autoCompleteIgnoreCase);
 	wOutput.AutoCSetIgnoreCase(true);
+	autoCompleteVisibleItemCount = props.GetInt("autocomplete.visible.item.count", 9);
 
 	const int autoCChooseSingle = props.GetInt("autocomplete.choose.single");
 	wEditor.AutoCSetChooseSingle(autoCChooseSingle);
 
 	wEditor.AutoCSetCancelAtStart(false);
 	wEditor.AutoCSetDropRestOfWord(false);
+
+	OptionalSetColour(wEditor, SA::Element::List, props, "autocomplete.fore");
+	OptionalSetColour(wEditor, SA::Element::ListBack, props, "autocomplete.back");
+	OptionalSetColour(wEditor, SA::Element::ListSelected, props, "autocomplete.selected.fore");
+	OptionalSetColour(wEditor, SA::Element::ListSelectedBack, props, "autocomplete.selected.back");
 
 	if (firstPropertiesRead) {
 		ReadPropertiesInitial();
@@ -1141,7 +1245,7 @@ void SciTEBase::ReadProperties() {
 		}
 	}
 
-	memFiles.AppendList(props.GetNewExpandString("find.files").c_str());
+	memFiles.AppendList(props.GetNewExpandString("find.files"));
 
 	wEditor.SetWrapVisualFlags(static_cast<SA::WrapVisualFlag>(props.GetInt("wrap.visual.flags")));
 	wEditor.SetWrapVisualFlagsLocation(static_cast<SA::WrapVisualLocation>(props.GetInt("wrap.visual.flags.location")));
@@ -1249,7 +1353,7 @@ void SciTEBase::ReadProperties() {
 			break;
 		}
 	}
-	const SA::Colour colourFoldFore = ColourFromString(foldFore);
+	const SA::ColourAlpha colourFoldFore = ColourAlphaFromString(foldFore);
 
 	std::string foldBack = props.GetExpandedString("fold.back");
 	// Set default colour for fill
@@ -1265,96 +1369,79 @@ void SciTEBase::ReadProperties() {
 			break;
 		}
 	}
-	const SA::Colour colourFoldBack = ColourFromString(foldBack);
+	const SA::ColourAlpha colourFoldBack = ColourAlphaFromString(foldBack);
 
 	// Enable/disable highlight for current folding block (smallest one that contains the caret)
 	const int isHighlightEnabled = props.GetInt("fold.highlight", 0);
 	// Define the colour of highlight
-	const SA::Colour colourFoldBlockHighlight = ColourOfProperty(props, "fold.highlight.colour", ColourRGB(0xFF, 0, 0));
+	const SA::ColourAlpha colourFoldBlockHighlight = ColourAlphaOfProperty(
+		props, "fold.highlight.colour", ColourRGBA(0xFF, 0, 0));
 
+	const int foldStrokeWidth = props.GetInt("fold.stroke.width", 100);
+	// Isolated and connected fold markers use foreground and background colours differently
+	MarkerAppearance isolated {
+		colourFoldFore, colourFoldBack, colourFoldBlockHighlight, foldStrokeWidth
+	};
+	MarkerAppearance connected {
+		colourFoldBack, colourFoldFore, colourFoldBlockHighlight, foldStrokeWidth
+	};
 	switch (foldSymbols) {
 	case 0:
 		// Arrow pointing right for contracted folders, arrow pointing down for expanded
-		DefineMarker(SA::MarkerOutline::FolderOpen, SA::MarkerSymbol::ArrowDown,
-			     colourFoldFore, colourFoldBack, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::Folder, SA::MarkerSymbol::Arrow,
-			     colourFoldFore, colourFoldBack, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderSub, SA::MarkerSymbol::Empty,
-			     colourFoldFore, colourFoldBack, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderTail, SA::MarkerSymbol::Empty,
-			     colourFoldFore, colourFoldBack, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderEnd, SA::MarkerSymbol::Empty,
-			     colourFoldFore, colourFoldBack, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderOpenMid, SA::MarkerSymbol::Empty,
-			     colourFoldFore, colourFoldBack, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderMidTail, SA::MarkerSymbol::Empty,
-			     colourFoldFore, colourFoldBack, colourFoldBlockHighlight);
+		DefineMarker(SA::MarkerOutline::FolderOpen, SA::MarkerSymbol::ArrowDown, isolated);
+		DefineMarker(SA::MarkerOutline::Folder, SA::MarkerSymbol::Arrow, isolated);
+		DefineMarker(SA::MarkerOutline::FolderSub, SA::MarkerSymbol::Empty, isolated);
+		DefineMarker(SA::MarkerOutline::FolderTail, SA::MarkerSymbol::Empty, isolated);
+		DefineMarker(SA::MarkerOutline::FolderEnd, SA::MarkerSymbol::Empty, isolated);
+		DefineMarker(SA::MarkerOutline::FolderOpenMid, SA::MarkerSymbol::Empty, isolated);
+		DefineMarker(SA::MarkerOutline::FolderMidTail, SA::MarkerSymbol::Empty, isolated);
 		// The highlight is disabled for arrow.
 		wEditor.MarkerEnableHighlight(false);
 		break;
 	case 1:
 		// Plus for contracted folders, minus for expanded
-		DefineMarker(SA::MarkerOutline::FolderOpen, SA::MarkerSymbol::Minus,
-			     colourFoldFore, colourFoldBack, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::Folder, SA::MarkerSymbol::Plus,
-			     colourFoldFore, colourFoldBack, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderSub, SA::MarkerSymbol::Empty,
-			     colourFoldFore, colourFoldBack, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderTail, SA::MarkerSymbol::Empty,
-			     colourFoldFore, colourFoldBack, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderEnd, SA::MarkerSymbol::Empty,
-			     colourFoldFore, colourFoldBack, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderOpenMid, SA::MarkerSymbol::Empty,
-			     colourFoldFore, colourFoldBack, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderMidTail, SA::MarkerSymbol::Empty,
-			     colourFoldFore, colourFoldBack, colourFoldBlockHighlight);
+		DefineMarker(SA::MarkerOutline::FolderOpen, SA::MarkerSymbol::Minus, isolated);
+		DefineMarker(SA::MarkerOutline::Folder, SA::MarkerSymbol::Plus, isolated);
+		DefineMarker(SA::MarkerOutline::FolderSub, SA::MarkerSymbol::Empty, isolated);
+		DefineMarker(SA::MarkerOutline::FolderTail, SA::MarkerSymbol::Empty, isolated);
+		DefineMarker(SA::MarkerOutline::FolderEnd, SA::MarkerSymbol::Empty, isolated);
+		DefineMarker(SA::MarkerOutline::FolderOpenMid, SA::MarkerSymbol::Empty, isolated);
+		DefineMarker(SA::MarkerOutline::FolderMidTail, SA::MarkerSymbol::Empty, isolated);
 		// The highlight is disabled for plus/minus.
 		wEditor.MarkerEnableHighlight(false);
 		break;
 	case 2:
 		// Like a flattened tree control using circular headers and curved joins
-		DefineMarker(SA::MarkerOutline::FolderOpen, SA::MarkerSymbol::CircleMinus,
-			     colourFoldBack, colourFoldFore, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::Folder, SA::MarkerSymbol::CirclePlus,
-			     colourFoldBack, colourFoldFore, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderSub, SA::MarkerSymbol::VLine,
-			     colourFoldBack, colourFoldFore, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderTail, SA::MarkerSymbol::LCornerCurve,
-			     colourFoldBack, colourFoldFore, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderEnd, SA::MarkerSymbol::CirclePlusConnected,
-			     colourFoldBack, colourFoldFore, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderOpenMid, SA::MarkerSymbol::CircleMinusConnected,
-			     colourFoldBack, colourFoldFore, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderMidTail, SA::MarkerSymbol::TCornerCurve,
-			     colourFoldBack, colourFoldFore, colourFoldBlockHighlight);
+		DefineMarker(SA::MarkerOutline::FolderOpen, SA::MarkerSymbol::CircleMinus, connected);
+		DefineMarker(SA::MarkerOutline::Folder, SA::MarkerSymbol::CirclePlus, connected);
+		DefineMarker(SA::MarkerOutline::FolderSub, SA::MarkerSymbol::VLine, connected);
+		DefineMarker(SA::MarkerOutline::FolderTail, SA::MarkerSymbol::LCornerCurve, connected);
+		DefineMarker(SA::MarkerOutline::FolderEnd, SA::MarkerSymbol::CirclePlusConnected, connected);
+		DefineMarker(SA::MarkerOutline::FolderOpenMid, SA::MarkerSymbol::CircleMinusConnected, connected);
+		DefineMarker(SA::MarkerOutline::FolderMidTail, SA::MarkerSymbol::TCornerCurve, connected);
 		wEditor.MarkerEnableHighlight(isHighlightEnabled);
 		break;
 	case 3:
 		// Like a flattened tree control using square headers
-		DefineMarker(SA::MarkerOutline::FolderOpen, SA::MarkerSymbol::BoxMinus,
-			     colourFoldBack, colourFoldFore, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::Folder, SA::MarkerSymbol::BoxPlus,
-			     colourFoldBack, colourFoldFore, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderSub, SA::MarkerSymbol::VLine,
-			     colourFoldBack, colourFoldFore, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderTail, SA::MarkerSymbol::LCorner,
-			     colourFoldBack, colourFoldFore, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderEnd, SA::MarkerSymbol::BoxPlusConnected,
-			     colourFoldBack, colourFoldFore, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderOpenMid, SA::MarkerSymbol::BoxMinusConnected,
-			     colourFoldBack, colourFoldFore, colourFoldBlockHighlight);
-		DefineMarker(SA::MarkerOutline::FolderMidTail, SA::MarkerSymbol::TCorner,
-			     colourFoldBack, colourFoldFore, colourFoldBlockHighlight);
+		DefineMarker(SA::MarkerOutline::FolderOpen, SA::MarkerSymbol::BoxMinus, connected);
+		DefineMarker(SA::MarkerOutline::Folder, SA::MarkerSymbol::BoxPlus, connected);
+		DefineMarker(SA::MarkerOutline::FolderSub, SA::MarkerSymbol::VLine, connected);
+		DefineMarker(SA::MarkerOutline::FolderTail, SA::MarkerSymbol::LCorner, connected);
+		DefineMarker(SA::MarkerOutline::FolderEnd, SA::MarkerSymbol::BoxPlusConnected, connected);
+		DefineMarker(SA::MarkerOutline::FolderOpenMid, SA::MarkerSymbol::BoxMinusConnected, connected);
+		DefineMarker(SA::MarkerOutline::FolderMidTail, SA::MarkerSymbol::TCorner, connected);
 		wEditor.MarkerEnableHighlight(isHighlightEnabled);
 		break;
 	}
 
-	wEditor.MarkerSetFore(markerBookmark,
-			      ColourOfProperty(props, "bookmark.fore", ColourRGB(0xbe, 0, 0)));
-	wEditor.MarkerSetBack(markerBookmark,
-			      ColourOfProperty(props, "bookmark.back", ColourRGB(0xe2, 0x40, 0x40)));
+	wEditor.MarkerSetForeTranslucent(markerBookmark,
+			      ColourAlphaOfProperty(props, "bookmark.fore", ColourRGBA(0xbe, 0, 0)));
+	wEditor.MarkerSetBackTranslucent(markerBookmark,
+			      ColourAlphaOfProperty(props, "bookmark.back", ColourRGBA(0xe2, 0x40, 0x40)));
 	wEditor.MarkerSetAlpha(markerBookmark,
 			       static_cast<SA::Alpha>(props.GetInt("bookmark.alpha", static_cast<int>(SA::Alpha::NoAlpha))));
+	wEditor.MarkerSetStrokeWidth(markerBookmark, props.GetInt("bookmark.stroke.width", 100));
+
 	const std::string bookMarkXPM = props.GetString("bookmark.pixmap");
 	if (bookMarkXPM.length()) {
 		wEditor.MarkerDefinePixmap(markerBookmark, bookMarkXPM.c_str());
@@ -1406,44 +1493,7 @@ void SciTEBase::ReadProperties() {
 		HighlightCurrentWord(true);
 	}
 
-	std::map<std::string, std::string> eConfig = editorConfig->MapFromAbsolutePath(filePath);
-	for (const std::pair<const std::string, std::string> &pss : eConfig) {
-		if (pss.first == "indent_style") {
-			wEditor.SetUseTabs(pss.second == "tab");
-		} else if (pss.first == "indent_size") {
-			wEditor.SetIndent(std::stoi(pss.second));
-		} else if (pss.first == "tab_width") {
-			wEditor.SetTabWidth(std::stoi(pss.second));
-		} else if (pss.first == "end_of_line") {
-			if (pss.second == "lf") {
-				wEditor.SetEOLMode(SA::EndOfLine::Lf);
-			} else if (pss.second == "cr") {
-				wEditor.SetEOLMode(SA::EndOfLine::Cr);
-			} else if (pss.second == "crlf") {
-				wEditor.SetEOLMode(SA::EndOfLine::Lf);
-			}
-		} else if (pss.first == "charset") {
-			if (pss.second == "latin1") {
-				CurrentBuffer()->unicodeMode = uni8Bit;
-				codePage = 0;
-			} else {
-				if (pss.second == "utf-8")
-					CurrentBuffer()->unicodeMode = uniCookie;
-				if (pss.second == "utf-8-bom")
-					CurrentBuffer()->unicodeMode = uniUTF8;
-				if (pss.second == "utf-16be")
-					CurrentBuffer()->unicodeMode = uni16BE;
-				if (pss.second == "utf-16le")
-					CurrentBuffer()->unicodeMode = uni16LE;
-				codePage = SA::CpUtf8;
-			}
-			wEditor.SetCodePage(codePage);
-		} else if (pss.first == "trim_trailing_whitespace") {
-			stripTrailingSpaces = pss.second == "true";
-		} else if (pss.first == "insert_final_newline") {
-			ensureFinalLineEnd = pss.second == "true";
-		}
-	}
+	ReadEditorConfig(fileNameForExtension);
 
 	if (extender) {
 		FilePath defaultDir = GetDefaultDirectory();
@@ -1479,20 +1529,86 @@ void SciTEBase::ReadProperties() {
 	needReadProperties = false;
 }
 
+void SciTEBase::ReadEditorConfig(const std::string &fileNameForExtension) {
+	std::map<std::string, std::string> eConfig = editorConfig->MapFromAbsolutePath(filePath);
+	for (const std::pair<const std::string, std::string> &pss : eConfig) {
+		try {
+			if (pss.first == "indent_style") {
+				const bool useTabs = pss.second == "tab";
+				propsDiscovered.Set("use.tabs", useTabs ? "1" : "0");
+				propsDiscovered.Set("use.tabs." + fileNameForExtension, useTabs ? "1" : "0");
+				wEditor.SetUseTabs(useTabs);
+			} else if (pss.first == "indent_size") {
+				std::string sIndentSize = pss.second;
+				if (sIndentSize == "tab") {
+					sIndentSize = props.GetExpandedString("tabsize");
+					if (sIndentSize.empty()) {
+						sIndentSize = "8";
+					}
+				}
+				propsDiscovered.Set("indent.size", sIndentSize);
+				propsDiscovered.Set("indent.size." + fileNameForExtension, sIndentSize);
+				wEditor.SetIndent(std::stoi(sIndentSize));
+			} else if (pss.first == "tab_width") {
+				propsDiscovered.Set("tabsize", pss.second);
+				propsDiscovered.Set("tab.size." + fileNameForExtension, pss.second);
+				wEditor.SetTabWidth(std::stoi(pss.second));
+			} else if (pss.first == "end_of_line") {
+				if (pss.second == "lf") {
+					propsDiscovered.Set("eol.mode", "LF");
+					wEditor.SetEOLMode(SA::EndOfLine::Lf);
+				} else if (pss.second == "cr") {
+					propsDiscovered.Set("eol.mode", "CR");
+					wEditor.SetEOLMode(SA::EndOfLine::Cr);
+				} else if (pss.second == "crlf") {
+					propsDiscovered.Set("eol.mode", "CRLF");
+					wEditor.SetEOLMode(SA::EndOfLine::CrLf);
+				}
+			} else if (pss.first == "charset") {
+				if (pss.second == "latin1") {
+					CurrentBuffer()->unicodeMode = uni8Bit;
+					codePage = 0;
+				} else {
+					if (pss.second == "utf-8")
+						CurrentBuffer()->unicodeMode = uniCookie;
+					if (pss.second == "utf-8-bom")
+						CurrentBuffer()->unicodeMode = uniUTF8;
+					if (pss.second == "utf-16be")
+						CurrentBuffer()->unicodeMode = uni16BE;
+					if (pss.second == "utf-16le")
+						CurrentBuffer()->unicodeMode = uni16LE;
+					codePage = SA::CpUtf8;
+				}
+				wEditor.SetCodePage(codePage);
+			} else if (pss.first == "trim_trailing_whitespace") {
+				stripTrailingSpaces = pss.second == "true";
+			} else if (pss.first == "insert_final_newline") {
+				ensureFinalLineEnd = pss.second == "true";
+			}
+		} catch (std::invalid_argument &) {
+			std::string diagnostic = "Invalid argument in .editorconfig '";
+			diagnostic += pss.first;
+			diagnostic += "=";
+			diagnostic += pss.second;
+			diagnostic += "'.\n";
+			OutputAppendString(diagnostic.c_str());
+			SetOutputVisibility(true);
+		}
+	}
+}
+
 void SciTEBase::ReadFontProperties() {
 	char key[200] = "";
 	const char *languageName = language.c_str();
 
-	if (lexLanguage == lexLPeg) {
+	if (StartsWith(languageName, "lpeg.") && language.length() < 240) {
 		// Retrieve style info.
 		char propStr[256] = "";
 		for (int i = 0; i < StyleMax; i++) {
-			sprintf(key, "style.lpeg.%0d", i);
-			wEditor.PrivateLexerCall(i - StyleMax,
-						 const_cast<char *>(propStr));
-			props.Set(key, static_cast<const char *>(propStr));
+			sprintf(key, "style.%s.%0d", languageName, i);
+			wEditor.PrivateLexerCall(i - StyleMax, propStr);
+			props.Set(key, propStr);
 		}
-		languageName = "lpeg";
 	}
 
 	// Set styles
@@ -1504,6 +1620,12 @@ void SciTEBase::ReadFontProperties() {
 
 	wEditor.StyleResetDefault();
 	wOutput.StyleResetDefault();
+
+	std::string fontLocale = props.GetExpandedString("font.locale");
+	if (!fontLocale.empty()) {
+		wEditor.SetFontLocale(fontLocale.c_str());
+		wOutput.SetFontLocale(fontLocale.c_str());
+	}
 
 	sprintf(key, "style.%s.%0d", "*", StyleDefault);
 	std::string sval = props.GetNewExpandString(key);

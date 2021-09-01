@@ -15,6 +15,7 @@
 #include <cstdio>
 #include <ctime>
 
+#include <tuple>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -158,8 +159,8 @@ void SciTEBase::DiscoverEOLSetting() {
 // Look inside the first line for a #! clue regarding the language
 std::string SciTEBase::DiscoverLanguage() {
 	const SA::Position length = std::min<SA::Position>(LengthDocument(), 64 * 1024);
-	std::string buf = wEditor.StringOfRange(SA::Range(0, length));
-	std::string languageOverride = "";
+	std::string buf = wEditor.StringOfSpan(SA::Span(0, length));
+	std::string languageOverride;
 	std::string_view line = ExtractLine(buf);
 	if (StartsWith(line, "<?xml")) {
 		languageOverride = "xml";
@@ -283,7 +284,7 @@ void SciTEBase::OpenCurrentFile(long long fileSize, bool suppressMessage, bool a
 		wEditor.StyleSetBack(StyleDefault, 0xEEEEEE);
 		wEditor.SetReadOnly(true);
 		assert(CurrentBufferConst()->pFileWorker == nullptr);
-		ILoader *pdocLoad;
+		Scintilla::ILoader *pdocLoad;
 		try {
 			SA::DocumentOption docOptions = SA::DocumentOption::Default;
 
@@ -296,7 +297,7 @@ void SciTEBase::OpenCurrentFile(long long fileSize, bool suppressMessage, bool a
 				docOptions = static_cast<SA::DocumentOption>(
 						     static_cast<int>(docOptions) | static_cast<int>(SA::DocumentOption::StylesNone));
 
-			pdocLoad = static_cast<ILoader *>(
+			pdocLoad = static_cast<Scintilla::ILoader *>(
 					   wEditor.CreateLoader(static_cast<SA::Position>(fileSize) + 1000,
 								docOptions));
 		} catch (...) {
@@ -342,10 +343,10 @@ void SciTEBase::OpenCurrentFile(long long fileSize, bool suppressMessage, bool a
 }
 
 void SciTEBase::TextRead(FileWorker *pFileWorker) {
-	FileLoader *pFileLoader = static_cast<FileLoader *>(pFileWorker);
+	FileLoader *pFileLoader = dynamic_cast<FileLoader *>(pFileWorker);
 	const int iBuffer = buffers.GetDocumentByWorker(pFileLoader);
 	// May not be found if load cancelled
-	if (iBuffer >= 0) {
+	if ((iBuffer >= 0) && pFileLoader) {
 		buffers.buffers[iBuffer].unicodeMode = pFileLoader->unicodeMode;
 		buffers.buffers[iBuffer].lifeState = Buffer::readAll;
 		if (pFileLoader->err) {
@@ -384,7 +385,7 @@ void SciTEBase::CompleteOpen(OpenCompletion oc) {
 		ReadProperties();
 	}
 
-	if (language == "") {
+	if (language == "" || language == "null") {
 		std::string languageOverride = DiscoverLanguage();
 		if (languageOverride.length()) {
 			CurrentBuffer()->overrideExtension = languageOverride;
@@ -430,7 +431,11 @@ void SciTEBase::CompleteOpen(OpenCompletion oc) {
 }
 
 void SciTEBase::TextWritten(FileWorker *pFileWorker) {
-	const FileStorer *pFileStorer = static_cast<const FileStorer *>(pFileWorker);
+	const FileStorer *pFileStorer = dynamic_cast<const FileStorer *>(pFileWorker);
+	assert(pFileStorer);
+	if (!pFileStorer) {
+		return;
+	}
 	const int iBuffer = buffers.GetDocumentByWorker(pFileStorer);
 
 	FilePath pathSaved = pFileStorer->path;
@@ -544,6 +549,8 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 	}
 
 	const long long fileSize = absPath.IsUntitled() ? 0 : absPath.GetFileLength();
+#if !defined(_WIN64)
+	// The #if is just to prevent a warning from Coverity on 64-bit Win32
 	if (fileSize > INTPTR_MAX) {
 		const GUI::gui_string sSize = GUI::StringFromLongLong(fileSize);
 		const GUI::gui_string msg = LocaliseMessage("File '^0' is ^1 bytes long, "
@@ -552,6 +559,7 @@ bool SciTEBase::Open(const FilePath &file, OpenFlags of) {
 		WindowMessageBox(wSciTE, msg, mbsIconWarning);
 		return false;
 	}
+#endif
 	if (fileSize > 0) {
 		// Real file, not empty buffer
 		const long long maxSize = props.GetLongLong("max.file.size", 2000000000LL);
@@ -950,10 +958,16 @@ public:
 	}
 
 	~SelectionKeeper() {
-		int i = 0;
-		for (auto const &sel : selections) {
-			SetSelection(i, PosFromLoc(sel));
-			++i;
+		try {
+			// Should never throw unless there was an earlier failure in Scintilla.
+			// This is just for restoring selection so swallow exceptions.
+			int i = 0;
+			for (auto const &sel : selections) {
+				SetSelection(i, PosFromLoc(sel));
+				++i;
+			}
+		} catch (...) {
+			// Ignore exceptions
 		}
 	}
 
@@ -1038,7 +1052,7 @@ void SciTEBase::StripTrailingSpaces() {
 			ch = wEditor.CharacterAt(i);
 		}
 		if (i < (lineEnd - 1)) {
-			wEditor.SetTarget(SA::Range(i + 1, lineEnd));
+			wEditor.SetTarget(SA::Span(i + 1, lineEnd));
 			wEditor.ReplaceTarget("");
 		}
 	}
@@ -1118,14 +1132,14 @@ bool SciTEBase::SaveBuffer(const FilePath &saveName, SaveFlags sf) {
 				convert.setfile(fp);
 				std::vector<char> data(blockSize + 1);
 				retVal = true;
-				size_t grabSize;
+				size_t grabSize = 0;
 				for (size_t i = 0; i < lengthDoc; i += grabSize) {
 					grabSize = lengthDoc - i;
 					if (grabSize > blockSize)
 						grabSize = blockSize;
 					// Round down so only whole characters retrieved.
 					grabSize = wEditor.PositionBefore(i + grabSize + 1) - i;
-					const SA::Range rangeGrab(static_cast<SA::Position>(i),
+					const SA::Span rangeGrab(static_cast<SA::Position>(i),
 								  static_cast<SA::Position>(i + grabSize));
 					wEditor.SetTarget(rangeGrab);
 					wEditor.TargetText(&data[0]);
@@ -1512,10 +1526,10 @@ void SciTEBase::GrepRecursive(GrepFlags gf, const FilePath &baseDir, const char 
 							}
 						}
 						if (match) {
-							os.append(fPath.AsUTF8().c_str());
+							os.append(fPath.AsUTF8());
 							os.append(":");
 							std::string lNumber = StdStringFromInteger(fr.LineNumber());
-							os.append(lNumber.c_str());
+							os.append(lNumber);
 							os.append(":");
 							os.append(fr.Original());
 							os.append("\n");
@@ -1546,7 +1560,7 @@ void SciTEBase::InternalGrep(GrepFlags gf, const GUI::gui_char *directory, const
 		os.append(">Internal search for \"");
 		os.append(search);
 		os.append("\" in \"");
-		os.append(GUI::UTF8FromString(fileTypes).c_str());
+		os.append(GUI::UTF8FromString(fileTypes));
 		os.append("\"\n");
 		OutputAppendStringSynchronised(os.c_str());
 		ShowOutputOnMainThread();

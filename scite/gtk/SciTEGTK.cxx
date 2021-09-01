@@ -3,15 +3,16 @@
 // Copyright 1998-2004 by Neil Hodgson <neilh@scintilla.org>
 // The License.txt file describes the conditions under which this software may be distributed.
 
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <time.h>
-#include <assert.h>
-#include <errno.h>
-#include <signal.h>
+#include <cstdlib>
+#include <cassert>
+#include <cstring>
+#include <cstdio>
+#include <cstdarg>
+#include <ctime>
+#include <cerrno>
+#include <csignal>
 
+#include <tuple>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -622,7 +623,7 @@ protected:
 	void Print(bool) override;
 	void PrintSetup() override;
 
-	std::string GetRangeInUIEncoding(GUI::ScintillaWindow &win, SA::Range range) override;
+	std::string GetRangeInUIEncoding(GUI::ScintillaWindow &win, SA::Span span) override;
 
 	MessageBoxChoice WindowMessageBox(GUI::Window &w, const GUI::gui_string &msg, int style = mbsIconWarning) override;
 	void FindMessageBox(const std::string &msg, const std::string *findItem=0) override;
@@ -1430,6 +1431,8 @@ void SciTEGTK::CheckMenus() {
 	CheckAMenuItem(IDM_VIEWSTATUSBAR, sbVisible);
 	CheckAMenuItem(IDM_VIEWTABBAR, tabVisible);
 
+	EnableAMenuItem(IDM_FINDINFILES, !jobQueue.IsExecuting());
+
 	if (btnBuild) {
 		gtk_widget_set_sensitive(btnBuild, !jobQueue.IsExecuting());
 		gtk_widget_set_sensitive(btnCompile, !jobQueue.IsExecuting());
@@ -1899,6 +1902,7 @@ void SciTEGTK::Print(bool) {
 	SelectionIntoProperties();
 	// Printing through the GTK API
 	GtkPrintOperation *printOp = gtk_print_operation_new();
+	gtk_print_operation_set_job_name(printOp, gtk_window_get_title(GTK_WINDOW(PWidget(wSciTE))));
 
 	if (printSettings != NULL)
 		gtk_print_operation_set_print_settings(printOp, printSettings);
@@ -1935,12 +1939,12 @@ void SciTEGTK::PrintSetup() {
 	pageSetup = newPageSetup;
 }
 
-std::string SciTEGTK::GetRangeInUIEncoding(GUI::ScintillaWindow &win, SA::Range range) {
-	const SA::Position len = range.Length();
+std::string SciTEGTK::GetRangeInUIEncoding(GUI::ScintillaWindow &win, SA::Span span) {
+	const SA::Position len = span.Length();
 	if (len == 0)
 		return std::string();
 	std::string allocation(len * 3 + 1, 0);
-	win.SetTarget(range);
+	win.SetTarget(span);
 	const SA::Position byteLength = win.TargetAsUTF8(&allocation[0]);
 	std::string sel(allocation, 0, byteLength);
 	return sel;
@@ -3457,7 +3461,7 @@ gint SciTEGTK::Key(GdkEventKey *event) {
 	// check user defined keys
 	for (const ShortcutItem &scut : shortCutItemList) {
 		if (KeyMatch(scut.menuKey.c_str(), event->keyval, modifiers)) {
-			const int commandNum = SciTEBase::GetMenuCommandAsInt(scut.menuCommand.c_str());
+			const int commandNum = SciTEBase::GetMenuCommandAsInt(scut.menuCommand);
 			if (commandNum != -1) {
 				if (commandNum < 2000) {
 					SciTEBase::MenuCommand(commandNum);
@@ -3888,17 +3892,17 @@ void SciTEGTK::CreateMenu() {
 	                                      {"/_Search", NULL, NULL, 0, "<Branch>"},
 	                                      {"/Search/_Find...", "<control>F", menuSig, IDM_FIND, 0},
 	                                      {"/Search/Find _Next", "F3", menuSig, IDM_FINDNEXT, 0},
-	                                      {"/Search/Find Previou_s", "<shift>F3", menuSig, IDM_FINDNEXTBACK, 0},
+	                                      {"/Search/Find _Previous", "<shift>F3", menuSig, IDM_FINDNEXTBACK, 0},
 	                                      {"/Search/F_ind in Files...", "<control><shift>F", menuSig, IDM_FINDINFILES, 0},
-	                                      {"/Search/R_eplace...", "<control>H", menuSig, IDM_REPLACE, 0},
-	                                      {"/Search/Incrementa_l Search", "<control><alt>I", menuSig, IDM_INCSEARCH, 0},
-	                                      {"/Search/Selection A_dd Next", "<control><shift>D", menuSig, IDM_SELECTIONADDNEXT, 0},
-	                                      {"/Search/Selection _Add Each", "", menuSig, IDM_SELECTIONADDEACH, 0},
+	                                      {"/Search/_Replace...", "<control>H", menuSig, IDM_REPLACE, 0},
+	                                      {"/Search/Incremental _Search", "<control><alt>I", menuSig, IDM_INCSEARCH, 0},
+	                                      {"/Search/Selection _Add Next", "<control><shift>D", menuSig, IDM_SELECTIONADDNEXT, 0},
+	                                      {"/Search/Selection Add _Each", "", menuSig, IDM_SELECTIONADDEACH, 0},
 	                                      {"/Search/sep3", NULL, NULL, 0, "<Separator>"},
 	                                      {"/Search/_Go To...", "<control>G", menuSig, IDM_GOTO, 0},
 	                                      {"/Search/Next Book_mark", "F2", menuSig, IDM_BOOKMARK_NEXT, 0},
 	                                      {"/Search/Pre_vious Bookmark", "<shift>F2", menuSig, IDM_BOOKMARK_PREV, 0},
-	                                      {"/Search/Toggle Bookmar_k", "<control>F2", menuSig, IDM_BOOKMARK_TOGGLE, 0},
+	                                      {"/Search/_Toggle Bookmark", "<control>F2", menuSig, IDM_BOOKMARK_TOGGLE, 0},
 	                                      {"/Search/_Clear All Bookmarks", "", menuSig, IDM_BOOKMARK_CLEARALL, 0},
 	                                      {"/Search/Select All _Bookmarks", "", menuSig, IDM_BOOKMARK_SELECT_ALL, 0},
 
@@ -4401,7 +4405,7 @@ void ReplaceStrip::Creation(GtkWidget *container) {
 	tableReplace.Add(wCheck[SearchOption::tWrap], 1, false, 0, 0);
 
 	// Make the fccus chain move down before moving right
-	GList *focusChain = 0;
+	GList *focusChain = nullptr;
 	focusChain = g_list_append(focusChain, wComboFind.Pointer());
 	focusChain = g_list_append(focusChain, wComboReplace.Pointer());
 	focusChain = g_list_append(focusChain, wButtonFind.Pointer());
@@ -4413,7 +4417,14 @@ void ReplaceStrip::Creation(GtkWidget *container) {
 	focusChain = g_list_append(focusChain, wCheck[SearchOption::tCase].Pointer());
 	focusChain = g_list_append(focusChain, wCheck[SearchOption::tWrap].Pointer());
 	focusChain = g_list_append(focusChain, wCheck[SearchOption::tRegExp].Pointer());
+
+	// gtk_container_set_focus_chain was deprecated in GTK 3.24 to prepare for GTK 4.
+	// Replacing it with a focus signal handler is significant work so won't be done, and isn't
+	// needed until/if SciTE is ported to GTK 4.
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS
 	gtk_container_set_focus_chain(GTK_CONTAINER(GetID()), focusChain);
+G_GNUC_END_IGNORE_DEPRECATIONS
+
 	g_list_free(focusChain);
 }
 

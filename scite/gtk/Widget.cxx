@@ -3,10 +3,12 @@
 // Copyright 2010 by Neil Hodgson <neilh@scintilla.org>
 // The License.txt file describes the conditions under which this software may be distributed.
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
+#include <tuple>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <chrono>
 

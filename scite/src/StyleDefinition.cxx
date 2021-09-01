@@ -23,22 +23,7 @@
 #include "StringHelpers.h"
 #include "StyleDefinition.h"
 
-namespace SA = Scintilla::API;
-
-namespace {
-
-typedef std::tuple<std::string_view, std::string_view> ViewPair;
-
-// Split view around first separator returning the portion before and after the separator.
-// If the separator is not present then return whole view and an empty view.
-ViewPair ViewSplit(std::string_view view, char separator) noexcept {
-	const size_t sepPos = view.find_first_of(separator);
-	std::string_view first = view.substr(0, sepPos);
-	std::string_view second = sepPos == (std::string_view::npos) ? "" : view.substr(sepPos + 1);
-	return { first, second };
-}
-
-}
+namespace SA = Scintilla;
 
 StyleDefinition::StyleDefinition(std::string_view definition) :
 	sizeFractional(10.0), size(10), fore("#000000"), back("#FFFFFF"),
@@ -167,18 +152,6 @@ bool StyleDefinition::IsBold() const noexcept {
 	return weight > SA::FontWeight::Normal;
 }
 
-int IntFromHexDigit(int ch) noexcept {
-	if ((ch >= '0') && (ch <= '9')) {
-		return ch - '0';
-	} else if (ch >= 'A' && ch <= 'F') {
-		return ch - 'A' + 10;
-	} else if (ch >= 'a' && ch <= 'f') {
-		return ch - 'a' + 10;
-	} else {
-		return 0;
-	}
-}
-
 int IntFromHexByte(std::string_view hexByte) noexcept {
 	return IntFromHexDigit(hexByte[0]) * 16 + IntFromHexDigit(hexByte[1]);
 }
@@ -189,6 +162,18 @@ SA::Colour ColourFromString(const std::string &s) {
 		const int g = IntFromHexByte(&s[3]);
 		const int b = IntFromHexByte(&s[5]);
 		return ColourRGB(r, g, b);
+	} else {
+		return 0;
+	}
+}
+
+SA::ColourAlpha ColourAlphaFromString(std::string_view s) {
+	if (s.length() >= 7) {
+		const int r = IntFromHexByte(&s[1]);
+		const int g = IntFromHexByte(&s[3]);
+		const int b = IntFromHexByte(&s[5]);
+		const int a = (s.length() >= 9)? IntFromHexByte(&s[7]) : 0xff;
+		return ColourRGBA(r, g, b, a);
 	} else {
 		return 0;
 	}

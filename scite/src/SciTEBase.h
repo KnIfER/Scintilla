@@ -14,15 +14,7 @@ extern const GUI::gui_char propUserFileName[];
 extern const GUI::gui_char propGlobalFileName[];
 extern const GUI::gui_char propAbbrevFileName[];
 
-inline int Minimum(int a, int b) noexcept {
-	return (a < b) ? a : b;
-}
-
-inline int Maximum(int a, int b) noexcept {
-	return (a > b) ? a : b;
-}
-
-inline int IntFromTwoShorts(short a, short b) noexcept {
+constexpr int IntFromTwoShorts(short a, short b) noexcept {
 	return (a) | ((b) << 16);
 }
 
@@ -36,7 +28,7 @@ enum {
 	menuHelp = 8
 };
 
-namespace SA = Scintilla::API;
+namespace SA = Scintilla;
 
 constexpr int StyleMax = static_cast<int>(SA::StylesCommon::Max);
 constexpr int StyleDefault = static_cast<int>(SA::StylesCommon::Default);
@@ -365,6 +357,9 @@ struct SystemAppearance {
 	}
 };
 
+// Titles appear different in menus and tabs
+enum class Title { menu, tab };
+
 class SciTEBase : public ExtensionAPI, public Searcher, public WorkerListener {
 protected:
 	bool needIdle;
@@ -382,7 +377,7 @@ protected:
 	enum { importCmdID = IDM_IMPORT };
 	ImportFilter filter;
 
-	enum { indicatorMatch = static_cast<int>(SA::IndicatorStyle::Container),
+	enum { indicatorMatch = static_cast<int>(SA::IndicatorNumbers::Container),
 	       indicatorHighlightCurrentWord,
 	       indicatorSpellingMistake,
 	       indicatorSentinel
@@ -404,7 +399,6 @@ protected:
 	std::string language;
 	int lexLanguage;
 	std::string subStyleBases;
-	int lexLPeg;
 	StringList apis;
 	std::string apisFileNames;
 	std::string functionDefinition;
@@ -495,6 +489,7 @@ protected:
 	bool callTipUseEscapes;
 	bool callTipIgnoreCase;
 	bool autoCCausedByOnlyOne;
+	int autoCompleteVisibleItemCount;
 	std::string calltipWordCharacters;
 	std::string calltipParametersStart;
 	std::string calltipParametersEnd;
@@ -578,6 +573,7 @@ protected:
 	void PrevInStack();
 	void EndStackedTabbing();
 
+	virtual void UpdateTabs(const std::vector<GUI::gui_string> &tabNames);
 	virtual void TabInsert(int index, const GUI::gui_char *title) = 0;
 	virtual void TabSelect(int index) = 0;
 	virtual void RemoveAllTabs() = 0;
@@ -675,7 +671,7 @@ protected:
 	SaveResult SaveIfUnsureForBuilt();
 	bool SaveIfNotOpen(const FilePath &destFile, bool fixCase);
 	void AbandonAutomaticSave();
-	bool Save(SaveFlags sf = sfProgressVisible);
+	virtual bool Save(SaveFlags sf = sfProgressVisible);
 	void SaveAs(const GUI::gui_char *file, bool fixCase);
 	virtual void SaveACopy() = 0;
 	void SaveToHTML(const FilePath &saveName);
@@ -710,15 +706,15 @@ protected:
 	void UserStripSetList(int /* control */, const char * /* value */) override {}
 	std::string UserStripValue(int /* control */) override { return std::string(); }
 	virtual void ShowBackgroundProgress(const GUI::gui_string & /* explanation */, size_t /* size */, size_t /* progress */) {}
-	SA::Range GetSelection();
+	SA::Span GetSelection();
 	SelectedRange GetSelectedRange();
 	void SetSelection(SA::Position anchor, SA::Position currentPos);
 	std::string GetCTag();
-	virtual std::string GetRangeInUIEncoding(GUI::ScintillaWindow &win, SA::Range range);
+	virtual std::string GetRangeInUIEncoding(GUI::ScintillaWindow &win, SA::Span span);
 	static std::string GetLine(GUI::ScintillaWindow &win, SA::Line line);
-	void RangeExtend(GUI::ScintillaWindow &wCurrent, SA::Range &range,
+	void RangeExtend(GUI::ScintillaWindow &wCurrent, SA::Span &range,
 			 bool (SciTEBase::*ischarforsel)(char ch));
-	std::string RangeExtendAndGrab(GUI::ScintillaWindow &wCurrent, SA::Range &range,
+	std::string RangeExtendAndGrab(GUI::ScintillaWindow &wCurrent, SA::Span &span,
 				       bool (SciTEBase::*ischarforsel)(char ch), bool stripEol = true);
 	std::string SelectionExtend(bool (SciTEBase::*ischarforsel)(char ch), bool stripEol = true);
 	std::string SelectionWord(bool stripEol = true);
@@ -748,7 +744,7 @@ protected:
 	void FailedSaveMessageBox(const FilePath &filePathSaving);
 	virtual void FindMessageBox(const std::string &msg, const std::string *findItem = nullptr) = 0;
 	bool FindReplaceAdvanced() const;
-	SA::Position FindInTarget(const std::string &findWhatText, SA::Range range);
+	SA::Position FindInTarget(const std::string &findWhatText, SA::Span range);
 	// Implement Searcher
 	void SetFindText(const char *sFind) override;
 	void SetFind(const char *sFind) override;
@@ -839,7 +835,7 @@ protected:
 	void FoldAll();
 	void ToggleFoldRecursive(SA::Line line, SA::FoldLevel level);
 	void EnsureAllChildrenVisible(SA::Line line, SA::FoldLevel level);
-	static void EnsureRangeVisible(GUI::ScintillaWindow &win, SA::Range range, bool enforcePolicy = true);
+	static void EnsureRangeVisible(GUI::ScintillaWindow &win, SA::Span range, bool enforcePolicy = true);
 	void GotoLineEnsureVisible(SA::Line line);
 	bool MarginClick(SA::Position position, int modifiers);
 	void NewLineInOutput();
@@ -913,12 +909,21 @@ protected:
 	void SetOverrideLanguage(int cmdID);
 	StyleAndWords GetStyleAndWords(const char *base);
 	std::string ExtensionFileName() const;
+	void SetElementColour(SA::Element element, const char *key);
 	static const char *GetNextPropItem(const char *pStart, char *pPropItem, int maxLen);
 	void ForwardPropertyToEditor(const char *key);
-	void DefineMarker(SA::MarkerOutline marker, SA::MarkerSymbol markerType, SA::Colour fore, SA::Colour back, SA::Colour backSelected);
+	struct MarkerAppearance {
+		SA::ColourAlpha fore;
+		SA::ColourAlpha back;
+		SA::ColourAlpha backSelected;
+		int strokeWidth;
+	};
+	void DefineMarker(SA::MarkerOutline marker, SA::MarkerSymbol markerType, MarkerAppearance markerAppearance);
 	void ReadAPI(const std::string &fileNameForExtension);
 	std::string FindLanguageProperty(const char *pattern, const char *defaultValue = "");
+	void SetRepresentations();
 	virtual void ReadProperties();
+	void ReadEditorConfig(const std::string &fileNameForExtension);
 	std::string StyleString(const char *lang, int style) const;
 	StyleDefinition StyleDefinitionFor(int style);
 	void SetOneStyle(GUI::ScintillaWindow &win, int style, const StyleDefinition &sd);
@@ -969,7 +974,7 @@ protected:
 	void PropertyToDirector(const char *arg);
 	// ExtensionAPI
 	intptr_t Send(Pane p, SA::Message msg, uintptr_t wParam = 0, intptr_t lParam = 0) override;
-	std::string Range(Pane p, SA::Range range) override;
+	std::string Range(Pane p, SA::Span range) override;
 	void Remove(Pane p, SA::Position start, SA::Position end) override;
 	void Insert(Pane p, SA::Position pos, const char *s) override;
 	void Trace(const char *s) override;
@@ -1015,6 +1020,7 @@ public:
 
 int ControlIDOfCommand(unsigned long) noexcept;
 SA::Colour ColourOfProperty(const PropSetFile &props, const char *key, SA::Colour colourDefault);
+SA::ColourAlpha ColourAlphaOfProperty(const PropSetFile &props, const char *key, SA::ColourAlpha colourDefault);
 void WindowSetFocus(GUI::ScintillaWindow &w);
 
 // Test if an enum class value has the bit flag(s) of test set.

@@ -14,13 +14,7 @@ srcRoot = "../.."
 sys.path.append(srcRoot + "/scintilla/scripts")
 
 import Face
-from FileGenerator import Regenerate
-
-def Contains(s,sub):
-	return s.find(sub) != -1
-
-def StartsWith(s, prefix):
-	return s.find(prefix) == 0
+import FileGenerator
 
 def CommentString(prop):
 	if prop and prop["Comment"]:
@@ -121,7 +115,7 @@ properties - a sorted list of (name, property), where property is a
 
 		if isok:
 			# do the types appear to be useable?  THIS IS OVERRIDDEN BELOW
-			isok = (propType in ('int', 'position', 'line', 'pointer', 'colour', 'bool', 'string', 'stringresult')
+			isok = (propType in ('int', 'position', 'line', 'pointer', 'colour', 'colouralpha', 'bool', 'string', 'stringresult')
 				and propIndex in ('void','int','position','line','string','bool'))
 
 			# getters on string properties follow a different protocol with this signature
@@ -388,7 +382,7 @@ def ReadMenuIDs(filename):
 			if l.startswith("#define"):
 				#~ print l
 				try:
-					d, name, number = l.split()
+					_d, name, number = l.split()
 					if name.startswith("IDM_"):
 						ids.append((name, {"Value":number}))
 				except ValueError:
@@ -405,8 +399,8 @@ def RegenerateAll():
 	face.ReadFromFile(srcRoot + "/scintilla/include/Scintilla.iface")
 	menuIDs  = ReadMenuIDs(srcRoot + "/scite/src/SciTE.h")
 	idsInOrder = idsFromDocumentation(srcRoot + "/scintilla/doc/ScintillaDoc.html")
-	Regenerate(srcRoot + "/scite/src/IFaceTable.cxx", "//", printIFaceTableCXXFile([face, faceLex, menuIDs]))
-	Regenerate(srcRoot + "/scite/doc/PaneAPI.html", "<!--", printIFaceTableHTMLFile([face, menuIDs, idsInOrder]))
+	FileGenerator.Regenerate(srcRoot + "/scite/src/IFaceTable.cxx", "//", printIFaceTableCXXFile([face, faceLex, menuIDs]))
+	FileGenerator.Regenerate(srcRoot + "/scite/doc/PaneAPI.html", "<!--", printIFaceTableHTMLFile([face, menuIDs, idsInOrder]))
 
 if __name__=="__main__":
 	RegenerateAll()

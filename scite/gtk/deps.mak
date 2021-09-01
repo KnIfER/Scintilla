@@ -3,9 +3,9 @@ DirectorExtension.o: \
 	DirectorExtension.cxx \
 	../../scintilla/include/ILexer.h \
 	../../scintilla/include/Sci_Position.h \
-	../src/ScintillaTypes.h \
-	../src/ScintillaMessages.h \
-	../src/ScintillaCall.h \
+	../../scintilla/include/ScintillaTypes.h \
+	../../scintilla/include/ScintillaMessages.h \
+	../../scintilla/include/ScintillaCall.h \
 	../../scintilla/include/Scintilla.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
@@ -32,9 +32,9 @@ SciTEGTK.o: \
 	SciTEGTK.cxx \
 	../../scintilla/include/ILexer.h \
 	../../scintilla/include/Sci_Position.h \
-	../src/ScintillaTypes.h \
-	../src/ScintillaMessages.h \
-	../src/ScintillaCall.h \
+	../../scintilla/include/ScintillaTypes.h \
+	../../scintilla/include/ScintillaMessages.h \
+	../../scintilla/include/ScintillaCall.h \
 	../../scintilla/include/Scintilla.h \
 	../../scintilla/include/ScintillaWidget.h \
 	../../lexilla/include/Lexilla.h \
@@ -77,8 +77,8 @@ Credits.o: \
 	../src/Credits.cxx \
 	../../scintilla/include/ILexer.h \
 	../../scintilla/include/Sci_Position.h \
-	../src/ScintillaTypes.h \
-	../src/ScintillaCall.h \
+	../../scintilla/include/ScintillaTypes.h \
+	../../scintilla/include/ScintillaCall.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
 	../src/StringList.h \
@@ -104,8 +104,8 @@ ExportHTML.o: \
 	../src/ExportHTML.cxx \
 	../../scintilla/include/ILexer.h \
 	../../scintilla/include/Sci_Position.h \
-	../src/ScintillaTypes.h \
-	../src/ScintillaCall.h \
+	../../scintilla/include/ScintillaTypes.h \
+	../../scintilla/include/ScintillaCall.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
 	../src/StringList.h \
@@ -125,8 +125,8 @@ ExportPDF.o: \
 	../src/ExportPDF.cxx \
 	../../scintilla/include/ILexer.h \
 	../../scintilla/include/Sci_Position.h \
-	../src/ScintillaTypes.h \
-	../src/ScintillaCall.h \
+	../../scintilla/include/ScintillaTypes.h \
+	../../scintilla/include/ScintillaCall.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
 	../src/StringList.h \
@@ -146,8 +146,8 @@ ExportRTF.o: \
 	../src/ExportRTF.cxx \
 	../../scintilla/include/ILexer.h \
 	../../scintilla/include/Sci_Position.h \
-	../src/ScintillaTypes.h \
-	../src/ScintillaCall.h \
+	../../scintilla/include/ScintillaTypes.h \
+	../../scintilla/include/ScintillaCall.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
 	../src/StringList.h \
@@ -167,8 +167,8 @@ ExportTEX.o: \
 	../src/ExportTEX.cxx \
 	../../scintilla/include/ILexer.h \
 	../../scintilla/include/Sci_Position.h \
-	../src/ScintillaTypes.h \
-	../src/ScintillaCall.h \
+	../../scintilla/include/ScintillaTypes.h \
+	../../scintilla/include/ScintillaCall.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
 	../src/StringList.h \
@@ -188,8 +188,8 @@ ExportXML.o: \
 	../src/ExportXML.cxx \
 	../../scintilla/include/ILexer.h \
 	../../scintilla/include/Sci_Position.h \
-	../src/ScintillaTypes.h \
-	../src/ScintillaCall.h \
+	../../scintilla/include/ScintillaTypes.h \
+	../../scintilla/include/ScintillaCall.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
 	../src/StringList.h \
@@ -234,9 +234,9 @@ JobQueue.o: \
 	../src/JobQueue.h
 LuaExtension.o: \
 	../src/LuaExtension.cxx \
-	../src/ScintillaTypes.h \
-	../src/ScintillaMessages.h \
-	../src/ScintillaCall.h \
+	../../scintilla/include/ScintillaTypes.h \
+	../../scintilla/include/ScintillaMessages.h \
+	../../scintilla/include/ScintillaCall.h \
 	../src/GUI.h \
 	../src/StringHelpers.h \
 	../src/FilePath.h \
@@ -251,15 +251,15 @@ LuaExtension.o: \
 	../lua/src/lauxlib.h
 MatchMarker.o: \
 	../src/MatchMarker.cxx \
-	../src/ScintillaTypes.h \
-	../src/ScintillaCall.h \
+	../../scintilla/include/ScintillaTypes.h \
+	../../scintilla/include/ScintillaCall.h \
 	../src/GUI.h \
 	../src/MatchMarker.h
 MultiplexExtension.o: \
 	../src/MultiplexExtension.cxx \
-	../src/ScintillaTypes.h \
-	../src/ScintillaMessages.h \
-	../src/ScintillaCall.h \
+	../../scintilla/include/ScintillaTypes.h \
+	../../scintilla/include/ScintillaMessages.h \
+	../../scintilla/include/ScintillaCall.h \
 	../src/MultiplexExtension.h \
 	../src/Extender.h
 PropSetFile.o: \
@@ -268,15 +268,11 @@ PropSetFile.o: \
 	../src/StringHelpers.h \
 	../src/FilePath.h \
 	../src/PropSetFile.h
-ScintillaCall.o: \
-	../src/ScintillaCall.cxx \
-	../src/ScintillaTypes.h \
-	../src/ScintillaMessages.h \
-	../src/ScintillaCall.h
 ScintillaWindow.o: \
 	../src/ScintillaWindow.cxx \
-	../src/ScintillaTypes.h \
-	../src/ScintillaCall.h \
+	../../scintilla/include/ScintillaTypes.h \
+	../../scintilla/include/ScintillaMessages.h \
+	../../scintilla/include/ScintillaCall.h \
 	../../scintilla/include/Scintilla.h \
 	../../scintilla/include/Sci_Position.h \
 	../src/GUI.h \
@@ -285,9 +281,9 @@ SciTEBase.o: \
 	../src/SciTEBase.cxx \
 	../../scintilla/include/ILoader.h \
 	../../scintilla/include/Sci_Position.h \
-	../src/ScintillaTypes.h \
-	../src/ScintillaMessages.h \
-	../src/ScintillaCall.h \
+	../../scintilla/include/ScintillaTypes.h \
+	../../scintilla/include/ScintillaMessages.h \
+	../../scintilla/include/ScintillaCall.h \
 	../../scintilla/include/Scintilla.h \
 	../../lexilla/include/SciLexer.h \
 	../src/GUI.h \
@@ -311,8 +307,8 @@ SciTEBuffers.o: \
 	../src/SciTEBuffers.cxx \
 	../../scintilla/include/ILoader.h \
 	../../scintilla/include/Sci_Position.h \
-	../src/ScintillaTypes.h \
-	../src/ScintillaCall.h \
+	../../scintilla/include/ScintillaTypes.h \
+	../../scintilla/include/ScintillaCall.h \
 	../../lexilla/include/SciLexer.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
@@ -334,8 +330,8 @@ SciTEIO.o: \
 	../src/SciTEIO.cxx \
 	../../scintilla/include/ILoader.h \
 	../../scintilla/include/Sci_Position.h \
-	../src/ScintillaTypes.h \
-	../src/ScintillaCall.h \
+	../../scintilla/include/ScintillaTypes.h \
+	../../scintilla/include/ScintillaCall.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
 	../src/StringList.h \
@@ -357,9 +353,9 @@ SciTEProps.o: \
 	../src/SciTEProps.cxx \
 	../../scintilla/include/ILexer.h \
 	../../scintilla/include/Sci_Position.h \
-	../src/ScintillaTypes.h \
-	../src/ScintillaMessages.h \
-	../src/ScintillaCall.h \
+	../../scintilla/include/ScintillaTypes.h \
+	../../scintilla/include/ScintillaMessages.h \
+	../../scintilla/include/ScintillaCall.h \
 	../../scintilla/include/Scintilla.h \
 	../../lexilla/include/SciLexer.h \
 	../../lexilla/include/Lexilla.h \
@@ -392,14 +388,14 @@ StringList.o: \
 	../src/StringHelpers.h
 StyleDefinition.o: \
 	../src/StyleDefinition.cxx \
-	../src/ScintillaTypes.h \
+	../../scintilla/include/ScintillaTypes.h \
 	../src/GUI.h \
 	../src/StringHelpers.h \
 	../src/StyleDefinition.h
 StyleWriter.o: \
 	../src/StyleWriter.cxx \
-	../src/ScintillaTypes.h \
-	../src/ScintillaCall.h \
+	../../scintilla/include/ScintillaTypes.h \
+	../../scintilla/include/ScintillaCall.h \
 	../src/GUI.h \
 	../src/StyleWriter.h
 Utf8_16.o: \
@@ -829,3 +825,8 @@ LexillaAccess.o: \
 	../../scintilla/include/Sci_Position.h \
 	../../lexilla/include/Lexilla.h \
 	../../lexilla/access/LexillaAccess.h
+ScintillaCall.o: \
+	../../scintilla/call/ScintillaCall.cxx \
+	../../scintilla/include/ScintillaTypes.h \
+	../../scintilla/include/ScintillaMessages.h \
+	../../scintilla/include/ScintillaCall.h

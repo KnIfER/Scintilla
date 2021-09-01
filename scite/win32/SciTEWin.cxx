@@ -5,7 +5,7 @@
 // Copyright 1998-2003 by Neil Hodgson <neilh@scintilla.org>
 // The License.txt file describes the conditions under which this software may be distributed.
 
-#include <time.h>
+#include <ctime>
 
 #include "SciTEWin.h"
 #include "DLLFunction.h"
@@ -217,7 +217,6 @@ SciTEWin::SciTEWin(Extension *ext) : SciTEBase(ext) {
 	tooltipText[0] = '\0';
 	tbLarge = false;
 	modalParameters = false;
-	filterDefault = 1;
 	staticBuild = false;
 	menuSource = 0;
 
@@ -464,7 +463,7 @@ void SciTEWin::ReadEmbeddedProperties() {
 			const void *pv = ::LockResource(hmem);
 			if (pv) {
 				propsEmbed.ReadFromMemory(
-					static_cast<const char *>(pv), size, FilePath(), filter, NULL, 0);
+					static_cast<const char *>(pv), size, FilePath(), filter, nullptr, 0);
 			}
 		}
 		::FreeResource(handProps);
@@ -495,7 +494,7 @@ SystemAppearance SciTEWin::CurrentAppearance() const noexcept {
 		;
 	const BOOL status = SystemParametersInfoW(SPI_GETHIGHCONTRAST, 0, &info, 0);
 	if (status) {
-		currentAppearance.highContrast = (info.dwFlags & HCF_HIGHCONTRASTON) ? 1 : 0;
+		currentAppearance.highContrast = (info.dwFlags & HCF_HIGHCONTRASTON) != 0;
 		if (currentAppearance.highContrast) {
 			// With high contrast, AppsUseLightTheme not correct so examine system background colour
 			const DWORD dwWindowColour = ::GetSysColor(COLOR_WINDOW);
@@ -604,7 +603,7 @@ void SciTEWin::ExecuteHelp(const char *cmd) {
 			typedef HWND (WINAPI *HelpFn)(HWND, const wchar_t *, UINT, DWORD_PTR);
 			HelpFn fnHHW = reinterpret_cast<HelpFn>(::GetProcAddress(hHH, "HtmlHelpW"));
 			if (fnHHW) {
-				XHH_AKLINK ak;
+				XHH_AKLINK ak {};
 				ak.cbStruct = sizeof(ak);
 				ak.fReserved = FALSE;
 				ak.pszKeywords = topic.c_str();
@@ -624,7 +623,7 @@ void SciTEWin::ExecuteHelp(const char *cmd) {
 }
 
 void SciTEWin::CopyAsRTF() {
-	const SA::Range cr = GetSelection();
+	const SA::Span cr = GetSelection();
 	std::ostringstream oss;
 	SaveToStreamRTF(oss, cr.start, cr.end);
 	const std::string rtf = oss.str();
@@ -1025,7 +1024,7 @@ DWORD SciTEWin::ExecuteOne(const Job &jobToRun) {
 			std::vector<char> buffer(pipeBufferSize);
 
 			if (!::PeekNamedPipe(hPipeRead, &buffer[0],
-					     static_cast<DWORD>(buffer.size()), &bytesRead, &bytesAvail, NULL)) {
+					     static_cast<DWORD>(buffer.size()), &bytesRead, &bytesAvail, nullptr)) {
 				bytesAvail = 0;
 			}
 
@@ -1048,7 +1047,7 @@ DWORD SciTEWin::ExecuteOne(const Job &jobToRun) {
 
 				const int bTest = ::WriteFile(hWriteSubProcess,
 							      jobToRun.input.c_str() + writingPosition,
-							      static_cast<DWORD>(bytesToWrite), &bytesWrote, NULL);
+							      static_cast<DWORD>(bytesToWrite), &bytesWrote, nullptr);
 
 				if (bTest) {
 					if ((writingPosition + bytesToWrite) / 1024 > writingPosition / 1024) {
@@ -1072,7 +1071,7 @@ DWORD SciTEWin::ExecuteOne(const Job &jobToRun) {
 
 			} else if (bytesAvail > 0) {
 				const int bTest = ::ReadFile(hPipeRead, &buffer[0],
-							     static_cast<DWORD>(buffer.size()), &bytesRead, NULL);
+							     static_cast<DWORD>(buffer.size()), &bytesRead, nullptr);
 
 				if (bTest && bytesRead) {
 
@@ -1464,7 +1463,7 @@ void SciTEWin::CreateUI() {
 	UIAvailable();
 }
 
-static bool IsSpaceOrTab(GUI::gui_char ch) noexcept {
+static constexpr bool IsSpaceOrTab(GUI::gui_char ch) noexcept {
 	return (ch == ' ') || (ch == '\t');
 }
 
@@ -1882,7 +1881,7 @@ LRESULT SciTEWin::KeyDown(WPARAM wParam) {
 	HMENU hMenu = ::GetMenu(MainHWND());
 	HMENU hToolsMenu = ::GetSubMenu(hMenu, menuTools);
 	for (int tool = 0; tool < toolMax; ++tool) {
-		MENUITEMINFO mii;
+		MENUITEMINFO mii {};
 		mii.cbSize = sizeof(MENUITEMINFO);
 		mii.fMask = MIIM_DATA;
 		if (::GetMenuItemInfo(hToolsMenu, IDM_TOOLS+tool, FALSE, &mii) && mii.dwItemData) {
@@ -1897,7 +1896,7 @@ LRESULT SciTEWin::KeyDown(WPARAM wParam) {
 	// exec it the command defined
 	for (const ShortcutItem &scut : shortCutItemList) {
 		if (KeyMatch(scut.menuKey, keyVal, modifierAsInt)) {
-			const int commandNum = SciTEBase::GetMenuCommandAsInt(scut.menuCommand.c_str());
+			const int commandNum = SciTEBase::GetMenuCommandAsInt(scut.menuCommand);
 			if (commandNum != -1) {
 				// its possible that the command is for scintilla directly
 				// all scintilla commands are larger then 2000
@@ -2261,7 +2260,7 @@ std::string SciTEWin::EncodeString(const std::string &s) {
 }
 
 // Convert String from doc encoding to UTF-8
-std::string SciTEWin::GetRangeInUIEncoding(GUI::ScintillaWindow &win, SA::Range range) {
+std::string SciTEWin::GetRangeInUIEncoding(GUI::ScintillaWindow &win, SA::Span range) {
 	std::string s = SciTEBase::GetRangeInUIEncoding(win, range);
 
 	UINT codePageDocument = wEditor.CodePage();
@@ -2269,14 +2268,13 @@ std::string SciTEWin::GetRangeInUIEncoding(GUI::ScintillaWindow &win, SA::Range 
 	if (codePageDocument != SA::CpUtf8) {
 		codePageDocument = CodePageFromCharSet(characterSet, codePageDocument);
 		std::wstring sWide = StringDecode(std::string(s.c_str(), s.length()), codePageDocument);
-		std::string sMulti = StringEncode(sWide, CP_UTF8);
-		return std::string(sMulti.c_str(), 0, sMulti.length());
+		return StringEncode(sWide, CP_UTF8);
 	}
 	return s;
 }
 
 uintptr_t SciTEWin::EventLoop() {
-	MSG msg;
+	MSG msg {};
 	msg.wParam = 0;
 	BOOL going = TRUE;
 	while (going) {
@@ -2369,7 +2367,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
 #endif
 
 	uintptr_t result = 0;
-	{
+	try {
 #ifdef NO_EXTENSIONS
 		Extension *extender = 0;
 #else
@@ -2391,11 +2389,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
 			lptszCmdLine++;
 		try {
 			MainWind.Run(lptszCmdLine);
+			// Set the current directory always to the program directory
+			// to ensure a opened file directory is never locked.
+			GetSciTEPath(FilePath()).SetWorkingDirectory();
 			result = MainWind.EventLoop();
 		} catch (const SA::Failure &sf) {
 			MainWind.CheckForScintillaFailure(sf.status);
+		} catch (const std::bad_alloc &) {
+			::MessageBox({}, TEXT("Allocation failure"), TEXT("Failure in SciTE"), MB_OK | MB_ICONERROR | MB_APPLMODAL);
 		}
 		MainWind.Finalise();
+	} catch (std::bad_array_new_length &) {
+		::MessageBox({}, TEXT("Allocation failure"), TEXT("Failure to allocate SciTE at start up"), MB_OK | MB_ICONERROR | MB_APPLMODAL);
 	}
 
 #ifdef STATIC_BUILD

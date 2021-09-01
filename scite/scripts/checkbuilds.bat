@@ -54,7 +54,6 @@ mingw32-make -j
 @popd
 @pushd scintilla\test
 pythonw simpleTests.py
-pythonw lexTests.py
 pythonw performanceTests.py
 pythonw win32Tests.py
 pythonw simpleTests.py -large
@@ -78,7 +77,6 @@ nmake -f lexilla.mak QUIET=1
 @popd
 @pushd scintilla\test
 pythonw simpleTests.py
-pythonw lexTests.py
 pythonw performanceTests.py
 pythonw win32Tests.py
 @popd
@@ -153,7 +151,6 @@ mingw32-make CLANG=1 -j
 @popd
 @pushd scintilla\test
 pythonw simpleTests.py
-pythonw lexTests.py
 pythonw performanceTests.py
 pythonw win32Tests.py
 @popd
@@ -183,9 +180,9 @@ nmake distclean
 rem ************************************************************
 rem Target 11: cppcheck
 @call scite\scripts\clearboth
-cppcheck -j 8 --enable=all --suppressions-list=lexilla/cppcheck.suppress --max-configs=100 -I lexilla/include -I lexilla/access -I lexilla/lexlib -I scintilla/include "-DSTDMETHODIMP_(type) type STDMETHODCALLTYPE" --template=gcc --quiet lexilla
+cppcheck -j 8 --enable=all --suppressions-list=lexilla/cppcheck.suppress --max-configs=120 -I lexilla/include -I lexilla/access -I lexilla/lexlib -I scintilla/include --template=gcc --quiet lexilla
 cppcheck -j 8 --enable=all --suppressions-list=scintilla/cppcheck.suppress --max-configs=100 -I scintilla/src -I scintilla/include -I scintilla/qt/ScintillaEditBase "-DSTDMETHODIMP_(type) type STDMETHODCALLTYPE" --template=gcc --quiet scintilla
-cppcheck -j 8 --enable=all --suppressions-list=scite/cppcheck.suppress --max-configs=100 -I scite/src -I lexilla/include -I lexilla/access -I scintilla/include -I scite/lua/src -Ulua_assert -DPATH_MAX=260 --template=gcc --quiet scite
+cppcheck -j 8 --enable=all --suppressions-list=scite/cppcheck.suppress --max-configs=100 -I scite/src -I lexilla/include -I lexilla/access -I scintilla/include -I scite/lua/src -Ulua_assert -DINVALID_HANDLE_VALUE=((HANDLE)(LONG_PTR)-1) --template=gcc --quiet scite
 @rem
 rem ************************************************************
 rem Target 12: header order check

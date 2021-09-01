@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <ctime>
 
+#include <tuple>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -51,7 +52,7 @@ extern "C" {
 
 #endif
 
-namespace SA = Scintilla::API;
+namespace SA = Scintilla;
 
 // A note on naming conventions:
 // I've gone back and forth on this a bit, trying different styles.
@@ -372,7 +373,7 @@ static int cf_pane_textrange(lua_State *L) {
 		const SA::Position cpMin = luaL_checkinteger(L, 2);
 		const SA::Position cpMax = luaL_checkinteger(L, 3);
 		if (cpMax >= 0) {
-			std::string range = host->Range(p, SA::Range(cpMin, cpMax));
+			std::string range = host->Range(p, SA::Span(cpMin, cpMax));
 			lua_pushstring(L, range.c_str());
 			return 1;
 		} else {
@@ -444,7 +445,7 @@ static int cf_pane_findtext(lua_State *L) {
 		if (!hasError) {
 			sc.SetTargetRange(rangeStart, rangeEnd);
 			sc.SetSearchFlags(static_cast<SA::FindOption>(flags));
-			const SA::Range result = sc.RangeSearchInTarget(t);
+			const SA::Span result = sc.SpanSearchInTarget(t);
 			if (result.start >= 0) {
 				lua_pushinteger(L, result.start);
 				lua_pushinteger(L, result.end);
@@ -469,7 +470,7 @@ static int cf_pane_findtext(lua_State *L) {
 
 struct PaneMatchObject {
 	ExtensionAPI::Pane pane;
-	SA::Range range;
+	SA::Span range;
 	int flags; // this is really part of the state, but is kept here for convenience
 	SA::Position endPosOrig; // has to do with preventing infinite loop on a 0-length match
 	bool RangeValid() const noexcept {
@@ -579,7 +580,7 @@ static int cf_pane_match(lua_State *L) {
 	PaneMatchObject *pmo = static_cast<PaneMatchObject *>(lua_newuserdata(L, sizeof(PaneMatchObject)));
 	if (pmo) {
 		pmo->pane = p;
-		pmo->range = SA::Range(-1, 0);
+		pmo->range = SA::Span(-1, 0);
 		pmo->endPosOrig = 0;
 		pmo->flags = 0;
 		if (nargs >= 3) {
@@ -636,12 +637,12 @@ static int cf_pane_match_generator(lua_State *L) {
 
 	SA::ScintillaCall &sc = host->PaneCaller(pmo->pane);
 
-	const SA::Range range(searchPos, sc.Length());
+	const SA::Span range(searchPos, sc.Length());
 
 	if (range.end > range.start) {
 		sc.SetTarget(range);
 		sc.SetSearchFlags(static_cast<SA::FindOption>(pmo->flags));
-		const SA::Range result = sc.RangeSearchInTarget(text);
+		const SA::Span result = sc.SpanSearchInTarget(text);
 		if (result.start >= 0) {
 			pmo->range = result;
 			pmo->endPosOrig = result.end;
@@ -1493,7 +1494,7 @@ bool LuaExtension::Initialise(ExtensionAPI *host_) {
 	return false;
 }
 
-bool LuaExtension::Finalise() {
+bool LuaExtension::Finalise() noexcept {
 	if (luaState) {
 		lua_close(luaState);
 	}
@@ -1504,7 +1505,7 @@ bool LuaExtension::Finalise() {
 	// The rest don't strictly need to be cleared since they
 	// are never accessed except when luaState and host are set
 
-	startupScript = "";
+	startupScript.clear();
 
 	return false;
 }
@@ -2023,7 +2024,7 @@ bool LuaExtension::OnStyle(SA::Position startPos, SA::Position lengthDoc, int in
 	if (luaState) {
 		if (lua_getglobal(luaState, "OnStyle") != LUA_TNIL) {
 
-			StylingContext sc;
+			StylingContext sc {};
 			sc.startPos = startPos;
 			sc.lengthDoc = lengthDoc;
 			sc.initStyle = initStyle;

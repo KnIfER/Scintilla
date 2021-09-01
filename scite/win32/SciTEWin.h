@@ -8,21 +8,23 @@
 #ifndef SCITEWIN_H
 #define SCITEWIN_H
 
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdarg.h>
-
+#include <cstdlib>
 #include <cstdint>
+#include <cassert>
+#include <cstring>
+#include <cstdio>
+#include <cstdarg>
 
-#include <optional>
+#include <tuple>
 #include <string>
 #include <string_view>
 #include <vector>
 #include <deque>
 #include <map>
 #include <set>
+#include <optional>
 #include <algorithm>
+#include <iterator>
 #include <memory>
 #include <chrono>
 #include <sstream>
@@ -47,6 +49,8 @@
 #define _WIN32_WINNT  0x0501
 #define WINVER 0x0501
 #endif
+#undef NOMINMAX
+#define NOMINMAX 1
 #include <windows.h>
 #include <commctrl.h>
 #include <richedit.h>
@@ -177,7 +181,7 @@ protected:
 	GUI::gui_char tooltipText[MAX_PATH*2 + 1];
 	bool tbLarge;
 	bool modalParameters;
-	int filterDefault;
+	GUI::gui_string openFilterDefault;
 	bool staticBuild;
 	int menuSource;
 	std::deque<GUI::gui_string> dropFilesQueue;
@@ -202,6 +206,7 @@ protected:
 
 	// Tab Bar
 	HFONT fontTabs;
+	std::vector<GUI::gui_string> tabNamesCurrent;
 
 	/// Preserve focus during deactivation
 	HWND wFocus;
@@ -296,6 +301,7 @@ protected:
 	void SetFileProperties(PropSetFile &ps) override;
 	void SetStatusBarText(const char *s) override;
 
+	void UpdateTabs(const std::vector<GUI::gui_string> &tabNames) override;
 	void TabInsert(int index, const GUI::gui_char *title) override;
 	void TabSelect(int index) override;
 	void RemoveAllTabs() override;
@@ -397,7 +403,7 @@ public:
 	LRESULT WndProc(UINT iMessage, WPARAM wParam, LPARAM lParam);
 
 	std::string EncodeString(const std::string &s) override;
-	std::string GetRangeInUIEncoding(GUI::ScintillaWindow &win, SA::Range range) override;
+	std::string GetRangeInUIEncoding(GUI::ScintillaWindow &win, SA::Span span) override;
 
 	HACCEL GetAcceleratorTable() noexcept {
 		return hAccTable;
@@ -420,11 +426,12 @@ GUI::Point ClientFromScreen(HWND hWnd, GUI::Point ptScreen) noexcept;
 
 // Common minor conversions
 
-inline GUI::Point PointFromLong(LPARAM lPoint) noexcept {
+constexpr GUI::Point PointFromLong(LPARAM lPoint) noexcept {
+	// static_cast<short> needed for negative coordinates
 	return GUI::Point(static_cast<short>(LOWORD(lPoint)), static_cast<short>(HIWORD(lPoint)));
 }
 
-inline int ControlIDOfWParam(WPARAM wParam) noexcept {
+constexpr int ControlIDOfWParam(WPARAM wParam) noexcept {
 	return wParam & 0xffff;
 }
 

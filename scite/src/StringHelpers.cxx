@@ -10,7 +10,9 @@
 #include <cstdio>
 
 #include <stdexcept>
+#include <tuple>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <algorithm>
 #include <functional>
@@ -38,7 +40,7 @@ bool Contains(std::string const &s, char ch) noexcept {
 	return s.find(ch) != std::string::npos;
 }
 
-int Substitute(std::wstring &s, const std::wstring &sFind, const std::wstring &sReplace) {
+int Substitute(std::wstring &s, std::wstring_view sFind, std::wstring_view sReplace) {
 	int c = 0;
 	const size_t lenFind = sFind.size();
 	const size_t lenReplace = sReplace.size();
@@ -51,7 +53,7 @@ int Substitute(std::wstring &s, const std::wstring &sFind, const std::wstring &s
 	return c;
 }
 
-int Substitute(std::string &s, const std::string &sFind, const std::string &sReplace) {
+int Substitute(std::string &s, std::string_view sFind, std::string_view sReplace) {
 	int c = 0;
 	const size_t lenFind = sFind.size();
 	const size_t lenReplace = sReplace.size();
@@ -225,6 +227,35 @@ unsigned int UTF32Character(const char *utf8) noexcept {
 	return u32Char;
 }
 
+namespace {
+
+// Helper for UTF8FromUTF32 processes 6 bits of input and isolates bit twiddling and cast.
+constexpr char SixBits(unsigned int uch, unsigned int shift, unsigned int mark=0x80) noexcept {
+	return static_cast<char>(mark | ((uch >> (shift * 6)) & 0b111111));
+}
+
+}
+
+std::string UTF8FromUTF32(unsigned int uch) {
+	std::string result;
+	if (uch < 0x80) {
+		result.push_back(static_cast<char>(uch));
+	} else if (uch < 0x800) {
+		result.push_back(SixBits(uch, 1, 0xC0));
+		result.push_back(SixBits(uch, 0));
+	} else if (uch < 0x10000) {
+		result.push_back(SixBits(uch, 2, 0xE0));
+		result.push_back(SixBits(uch, 1));
+		result.push_back(SixBits(uch, 0));
+	} else {
+		result.push_back(SixBits(uch, 3, 0xF0));
+		result.push_back(SixBits(uch, 2));
+		result.push_back(SixBits(uch, 1));
+		result.push_back(SixBits(uch, 0));
+	}
+	return result;
+}
+
 /**
  * Convert a string into C string literal form using \a, \b, \f, \n, \r, \t, \v, and \ooo.
  */
@@ -266,7 +297,7 @@ std::string Slash(const std::string &s, bool quoteQuotes) {
 /**
  * Is the character an octal digit?
  */
-static bool IsOctalDigit(char ch) noexcept {
+static constexpr bool IsOctalDigit(char ch) noexcept {
 	return ch >= '0' && ch <= '7';
 }
 
@@ -385,4 +416,55 @@ std::string UnSlashLowOctalString(const char *s) {
 	std::string sCopy(s, strlen(s) + 1);
 	const unsigned int len = UnSlashLowOctal(&sCopy[0]);
 	return sCopy.substr(0, len);
+}
+
+unsigned int IntFromHexDigit(int ch) noexcept {
+	if ((ch >= '0') && (ch <= '9')) {
+		return ch - '0';
+	} else if (ch >= 'A' && ch <= 'F') {
+		return ch - 'A' + 10;
+	} else if (ch >= 'a' && ch <= 'f') {
+		return ch - 'a' + 10;
+	} else {
+		return 0;
+	}
+}
+
+unsigned int IntFromHexBytes(std::string_view hexBytes) noexcept {
+	unsigned int val = 0;
+	while (!hexBytes.empty()) {
+		val = val * 16 + IntFromHexDigit(hexBytes[0]);
+		hexBytes.remove_prefix(1);
+	}
+	return val;
+}
+
+std::string UnicodeUnEscape(std::string_view s) {
+	// Not concerned with invalid input, just do an OK job
+	std::string result;
+	while (!s.empty()) {
+		if (s.length() > 2 && s[0] == '\\') {
+			unsigned int val = 0;
+			if (s[1] == 'x' && s.length() >= 4) {
+				// \xAB
+				val = IntFromHexBytes(s.substr(2,2));
+				s.remove_prefix(4);
+			}  else if (s[1] == 'u' && s.length() >= 6) {
+				// \uABCD
+				val = IntFromHexBytes(s.substr(2, 4));
+				s.remove_prefix(6);
+			}  else if (s[1] == 'U' && s.length() >= 10) {
+				// \uABCDDEF9
+				val = IntFromHexBytes(s.substr(2, 8));
+				s.remove_prefix(10);
+			} else {
+				s.remove_prefix(1);
+			}
+			result.append(UTF8FromUTF32(val));
+		} else {
+			result.push_back(s[0]);
+			s.remove_prefix(1);
+		}
+	}
+	return result;
 }

@@ -206,7 +206,7 @@ GUI::gui_string SciTEWin::DialogFilterFromProperty(const GUI::gui_char *filterPr
 				GUI::gui_string localised = localiser.Text(GUI::UTF8FromString(filterName).c_str(), false);
 				if (localised.size()) {
 					filterText.erase(start, wcslen(filterName));
-					filterText.insert(start, localised.c_str());
+					filterText.insert(start, localised);
 				}
 				start += wcslen(filterText.c_str() + start) + 1;
 				start += wcslen(filterText.c_str() + start) + 1;
@@ -228,6 +228,14 @@ void SciTEWin::CheckCommonDialogError() {
 bool SciTEWin::OpenDialog(const FilePath &directory, const GUI::gui_char *filesFilter) {
 	enum {maxBufferSize=2048};
 
+	DWORD filterDefault = 1;
+	std::vector<GUI::gui_string> filters = StringSplit(GUI::gui_string(filesFilter), L'|');
+	if (!openFilterDefault.empty()) {
+		std::vector<GUI::gui_string>::iterator itFilter = std::find(filters.begin(), filters.end(), openFilterDefault);
+		if (itFilter != filters.end()) {
+			filterDefault = static_cast<DWORD>(std::distance(filters.begin(), itFilter)) / 2 + 1;
+		}
+	}
 	GUI::gui_string openFilter = DialogFilterFromProperty(filesFilter);
 
 	if (!openWhat[0]) {
@@ -238,8 +246,7 @@ bool SciTEWin::OpenDialog(const FilePath &directory, const GUI::gui_char *filesF
 	}
 
 	bool succeeded = false;
-	GUI::gui_char openName[maxBufferSize]; // maximum common dialog buffer size (says mfc..)
-	openName[0] = '\0';
+	GUI::gui_char openName[maxBufferSize] = GUI_TEXT(""); // maximum common dialog buffer size (says mfc..)
 
 	OPENFILENAMEW ofn {};
 	ofn.lStructSize = sizeof(ofn);
@@ -267,7 +274,7 @@ bool SciTEWin::OpenDialog(const FilePath &directory, const GUI::gui_char *filesF
 	}
 	if (::GetOpenFileNameW(&ofn)) {
 		succeeded = true;
-		filterDefault = ofn.nFilterIndex;
+		openFilterDefault = filters[(ofn.nFilterIndex-1)*2];
 		// if single selection then have path+file
 		if (wcslen(openName) > static_cast<size_t>(ofn.nFileOffset)) {
 			Open(openName);
@@ -450,7 +457,7 @@ void SciTEWin::Print(
 	// This code will not work for documents > 2GB
 
 	// See if a range has been selected
-	const SA::Range rangeSelection = GetSelection();
+	const SA::Span rangeSelection = GetSelection();
 	const LONG startPos = static_cast<LONG>(rangeSelection.start);
 	const LONG endPos = static_cast<LONG>(rangeSelection.end);
 
@@ -530,10 +537,10 @@ void SciTEWin::Print(
 		}
 
 		// Don't reduce margins below the minimum printable area
-		rectMargins.left	= Maximum(rectPhysMargins.left, rectSetup.left);
-		rectMargins.top	= Maximum(rectPhysMargins.top, rectSetup.top);
-		rectMargins.right	= Maximum(rectPhysMargins.right, rectSetup.right);
-		rectMargins.bottom	= Maximum(rectPhysMargins.bottom, rectSetup.bottom);
+		rectMargins.left	= std::max(rectPhysMargins.left, rectSetup.left);
+		rectMargins.top	= std::max(rectPhysMargins.top, rectSetup.top);
+		rectMargins.right	= std::max(rectPhysMargins.right, rectSetup.right);
+		rectMargins.bottom	= std::max(rectPhysMargins.bottom, rectSetup.bottom);
 	} else {
 		rectMargins.left	= rectPhysMargins.left;
 		rectMargins.top	= rectPhysMargins.top;
@@ -628,7 +635,7 @@ void SciTEWin::Print(
 	}
 
 	// We must subtract the physical margins from the printable area
-	Sci_RangeToFormat frPrint;
+	Sci_RangeToFormat frPrint {};
 	frPrint.hdc = hdc;
 	frPrint.hdcTarget = hdc;
 	frPrint.rc.left = rectMargins.left - rectPhysMargins.left;

@@ -13,7 +13,9 @@
 #include <ctime>
 
 #include <stdexcept>
+#include <tuple>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <map>
 #include <set>
@@ -269,7 +271,7 @@ static int ExpandAllInPlace(const PropSetFile &props, std::string &withVars, int
 			innerVarStart = withVars.find("$(", varStart+2);
 		}
 
-		std::string var(withVars.c_str(), varStart + 2, varEnd - (varStart + 2));
+		std::string var(withVars, varStart + 2, varEnd - (varStart + 2));
 		std::string val = props.Evaluate(var.c_str());
 
 		if (blankVars.contains(var.c_str())) {
@@ -353,7 +355,7 @@ static bool GetFullLine(const char *&fpc, size_t &lenData, char *s, size_t len) 
 	return false;
 }
 
-static bool IsSpaceOrTab(char ch) noexcept {
+static constexpr bool IsSpaceOrTab(char ch) noexcept {
 	return (ch == ' ') || (ch == '\t');
 }
 

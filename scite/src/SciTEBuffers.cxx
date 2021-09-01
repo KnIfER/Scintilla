@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <ctime>
 
+#include <tuple>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -78,8 +79,8 @@ void Buffer::CompleteStoring() {
 
 void Buffer::AbandonAutomaticSave() {
 	if (pFileWorker && !pFileWorker->IsLoading()) {
-		const FileStorer *pFileStorer = static_cast<FileStorer *>(pFileWorker);
-		if (!pFileStorer->visibleProgress) {
+		const FileStorer *pFileStorer = dynamic_cast<FileStorer *>(pFileWorker);
+		if (pFileStorer && !pFileStorer->visibleProgress) {
 			pFileWorker->Cancel();
 			// File is in partially saved state so may be better to remove
 		}
@@ -293,8 +294,8 @@ BackgroundActivities BufferList::CountBackgroundActivities() const {
 		if (buffers[i].pFileWorker) {
 			if (!buffers[i].pFileWorker->FinishedJob()) {
 				if (!buffers[i].pFileWorker->IsLoading()) {
-					const FileStorer *fstorer = static_cast<FileStorer *>(buffers[i].pFileWorker);
-					if (!fstorer->visibleProgress)
+					const FileStorer *fstorer = dynamic_cast<FileStorer *>(buffers[i].pFileWorker);
+					if (fstorer && !fstorer->visibleProgress)
 						continue;
 				}
 				if (buffers[i].pFileWorker->IsLoading())
@@ -629,7 +630,7 @@ void SciTEBase::RestoreSession() {
 			std::string propStr = propsSession.GetString(propKey.c_str());
 			if (propStr == "")
 				break;
-			memFinds.AppendList(propStr.c_str());
+			memFinds.AppendList(propStr);
 		}
 
 		for (int i = 0;; i++) {
@@ -637,7 +638,7 @@ void SciTEBase::RestoreSession() {
 			std::string propStr = propsSession.GetString(propKey.c_str());
 			if (propStr == "")
 				break;
-			memReplaces.AppendList(propStr.c_str());
+			memReplaces.AppendList(propStr);
 		}
 	}
 
@@ -1117,23 +1118,98 @@ void SciTEBase::EndStackedTabbing() {
 	buffers.CommitStackSelection();
 }
 
-static void EscapeFilePathsForMenu(GUI::gui_string &path) {
-	// Escape '&' characters in path, since they are interpreted in
-	// menus.
-	Substitute(path, GUI_TEXT("&"), GUI_TEXT("&&"));
-#if defined(GTK)
-	GUI::gui_string homeDirectory = getenv("HOME");
-	if (StartsWith(path, homeDirectory)) {
-		path.replace(static_cast<size_t>(0), homeDirectory.size(), GUI_TEXT("~"));
+void SciTEBase::UpdateTabs(const std::vector<GUI::gui_string> &tabNames) {
+	RemoveAllTabs();
+	for (int t = 0; t < static_cast<int>(tabNames.size()); t++) {
+		TabInsert(t, tabNames[t].c_str());
+	}
+}
+
+namespace {
+
+GUI::gui_string EscapeFilePath(const FilePath &path, [[maybe_unused]]Title destination) {
+	// Escape '&' characters in path, since they are interpreted in menus.
+	GUI::gui_string escaped(path.AsInternal());
+#if defined(_WIN32)
+	// On Windows, '&' are interpreted in menus and tab names, so we need
+	// the escaped filename
+	Substitute(escaped, GUI_TEXT("&"), GUI_TEXT("&&"));
+#else
+	if (destination == Title::menu) {
+		Substitute(escaped, GUI_TEXT("&"), GUI_TEXT("&&"));
 	}
 #endif
+	return escaped;
+}
+
+GUI::gui_string AbbreviateWithTilde(const GUI::gui_string &path) {
+#if defined(GTK)
+	const GUI::gui_string_view homeDirectory = getenv("HOME");
+	if (StartsWith(path, homeDirectory)) {
+		return GUI::gui_string(GUI_TEXT("~")) + path.substr(homeDirectory.size());
+	}
+#endif
+	return path;
+}
+
+// Produce a menu or tab title from a buffer.
+// <index> <file name> <is read only> <is dirty>
+// 3 /src/example.cxx | *
+GUI::gui_string BufferTitle([[maybe_unused]] int pos, const Buffer &buffer, Title destination,
+	PropSetFile const &props, Localization &localiser) {
+	GUI::gui_string title;
+
+	// Index
+#if defined(_WIN32) || defined(GTK)
+	if (pos < 10) {
+		const GUI::gui_string sPos = GUI::StringFromInteger((pos + 1) % 10);
+		const GUI::gui_string sHotKey = GUI_TEXT("&") + sPos + GUI_TEXT(" ");
+		if (destination == Title::menu) {
+			title = sHotKey;	// hotkey 1..0
+		} else {
+			if (props.GetInt("tabbar.hide.index") == 0) {
+#if defined(_WIN32)
+				title = sHotKey; // add hotkey to the tabbar
+#elif defined(GTK)
+				title = sPos + GUI_TEXT(" ");	// just the index
+#endif
+			}
+		}
+	}
+#endif
+
+	// File name or path
+	if (buffer.file.IsUntitled()) {
+		title += localiser.Text("Untitled");
+	} else {
+		if (destination == Title::menu) {
+			title += AbbreviateWithTilde(EscapeFilePath(buffer.file, destination));
+		} else {
+			title += EscapeFilePath(buffer.file.Name(), destination);
+		}
+	}
+
+	// Read only indicator
+	if (buffer.isReadOnly && props.GetInt("read.only.indicator")) {
+		title += GUI_TEXT(" |");
+	}
+
+	// Dirty indicator
+	if (buffer.isDirty) {
+		title += GUI_TEXT(" *");
+	}
+
+	return title;
+}
+
 }
 
 void SciTEBase::SetBuffersMenu() {
 	if (buffers.size() <= 1) {
 		DestroyMenuItem(menuBuffers, IDM_BUFFERSEP);
 	}
-	RemoveAllTabs();
+
+	std::vector<GUI::gui_string> tabNames;
 
 	int pos;
 	for (pos = buffers.lengthVisible; pos < bufferMax; pos++) {
@@ -1144,59 +1220,17 @@ void SciTEBase::SetBuffersMenu() {
 		SetMenuItem(menuBuffers, menuStart, IDM_BUFFERSEP, GUI_TEXT(""));
 		for (pos = 0; pos < buffers.lengthVisible; pos++) {
 			const int itemID = bufferCmdID + pos;
-			GUI::gui_string entry;
-			GUI::gui_string titleTab;
-
-#if defined(_WIN32) || defined(GTK)
-			if (pos < 10) {
-				GUI::gui_string sPos = GUI::StringFromInteger((pos + 1) % 10);
-				GUI::gui_string sHotKey = GUI_TEXT("&") + sPos + GUI_TEXT(" ");
-				entry = sHotKey;	// hotkey 1..0
-				if (props.GetInt("tabbar.hide.index") == 0) {
-#if defined(_WIN32)
-					titleTab = sHotKey; // add hotkey to the tabbar
-#elif defined(GTK)
-					titleTab = sPos + GUI_TEXT(" ");
-#endif
-				}
-			}
-#endif
-
-			if (buffers.buffers[pos].file.IsUntitled()) {
-				GUI::gui_string untitled = localiser.Text("Untitled");
-				entry += untitled;
-				titleTab += untitled;
-			} else {
-				GUI::gui_string path = buffers.buffers[pos].file.AsInternal();
-				GUI::gui_string filename = buffers.buffers[pos].file.Name().AsInternal();
-
-				EscapeFilePathsForMenu(path);
-#if defined(_WIN32)
-				// On Windows, '&' are also interpreted in tab names, so we need
-				// the escaped filename
-				EscapeFilePathsForMenu(filename);
-#endif
-				entry += path;
-				titleTab += filename;
-			}
-			// For short file names:
-			//char *cpDirEnd = strrchr(buffers.buffers[pos]->fileName, pathSepChar);
-			//strcat(entry, cpDirEnd + 1);
-
-			if (buffers.buffers[pos].isReadOnly && props.GetInt("read.only.indicator"))  {
-				entry += GUI_TEXT(" |");
-				titleTab += GUI_TEXT(" |");
-			}
-
-			if (buffers.buffers[pos].isDirty) {
-				entry += GUI_TEXT(" *");
-				titleTab += GUI_TEXT(" *");
-			}
-
+			const GUI::gui_string entry = BufferTitle(pos, buffers.buffers[pos],
+				Title::menu, props, localiser);
 			SetMenuItem(menuBuffers, menuStart + pos + 1, itemID, entry.c_str());
-			TabInsert(pos, titleTab.c_str());
+
+			const GUI::gui_string titleTab = BufferTitle(pos, buffers.buffers[pos],
+				Title::tab, props, localiser);
+			tabNames.push_back(titleTab);
 		}
 	}
+	UpdateTabs(tabNames);
+
 	CheckMenus();
 #if !defined(GTK)
 
@@ -1234,8 +1268,8 @@ void SciTEBase::SetFileStackMenu() {
 				sEntry = sHotKey;
 #endif
 
-				GUI::gui_string path = recentFileStack[stackPos].AsInternal();
-				EscapeFilePathsForMenu(path);
+				const GUI::gui_string path = EscapeFilePath(
+					recentFileStack[stackPos], Title::menu);
 
 				sEntry += path;
 				SetMenuItem(menuFile, MRU_START + stackPos + 1, itemID, sEntry.c_str());
@@ -1476,7 +1510,7 @@ void SciTEBase::ToolsMenu(int item) {
 
 	const std::string itemSuffix = StdStringFromInteger(item) + ".";
 	const std::string propName = std::string("command.") + itemSuffix;
-	std::string command(props.GetWild(propName.c_str(), FileNameExt().AsUTF8().c_str()).c_str());
+	std::string command(props.GetWild(propName.c_str(), FileNameExt().AsUTF8().c_str()));
 	if (command.length()) {
 		JobMode jobMode(props, item, FileNameExt().AsUTF8().c_str());
 		if (jobQueue.IsExecuting() && (jobMode.jobType != jobImmediate))
@@ -1490,13 +1524,15 @@ void SciTEBase::ToolsMenu(int item) {
 					extender->OnExecute(command.c_str());
 				}
 			} else {
-				AddCommand(command.c_str(), "", jobMode.jobType, jobMode.input, jobMode.flags);
+				AddCommand(command, "", jobMode.jobType, jobMode.input, jobMode.flags);
 				if (jobQueue.HasCommandToRun())
 					Execute();
 			}
 		}
 	}
 }
+
+namespace {
 
 static SA::Line DecodeMessage(const char *cdoc, std::string &sourcePath, int format, SA::Position &column) {
 	sourcePath.clear();
@@ -1845,13 +1881,13 @@ static SA::Line DecodeMessage(const char *cdoc, std::string &sourcePath, int for
 	return -1;
 }
 
-#define CSI "\033["
+constexpr const char *CSI = "\033[";
 
-static bool SeqEnd(int ch) noexcept {
+constexpr bool SeqEnd(int ch) noexcept {
 	return (ch == 0) || ((ch >= '@') && (ch <= '~'));
 }
 
-static void RemoveEscSeq(std::string &s) {
+void RemoveEscSeq(std::string &s) {
 	size_t csi = s.find(CSI);
 	while (csi != std::string::npos) {
 		size_t endSeq = csi + 2;
@@ -1863,13 +1899,11 @@ static void RemoveEscSeq(std::string &s) {
 }
 
 // Remove up to and including ch
-static void Chomp(std::string &s, char ch) {
+void Chomp(std::string &s, char ch) {
 	const size_t posCh = s.find(ch);
 	if (posCh != std::string::npos)
 		s.erase(0, posCh + 1);
 }
-
-namespace {
 
 char Severity(const std::string &message) noexcept {
 	if (message.find("fatal") != std::string::npos)
@@ -1894,7 +1928,7 @@ void SciTEBase::ShowMessages(SA::Line line) {
 	while ((line < maxLine) && (acc.StyleAt(acc.LineStart(line)) != SCE_ERR_CMD)) {
 		const SA::Position startPosLine = wOutput.LineStart(line);
 		const SA::Position lineEnd = wOutput.LineEnd(line);
-		std::string message = wOutput.StringOfRange(SA::Range(startPosLine, lineEnd));
+		std::string message = wOutput.StringOfSpan(SA::Span(startPosLine, lineEnd));
 		std::string source;
 		SA::Position column = 0;
 		int style = acc.StyleAt(startPosLine);
@@ -1967,7 +2001,7 @@ void SciTEBase::GoMessage(int dir) {
 					      "error.marker.back", ColourRGB(0xff, 0xff, 0)));
 			wOutput.MarkerAdd(lookLine, 0);
 			wOutput.SetSel(startPosLine, startPosLine);
-			std::string message = wOutput.StringOfRange(SA::Range(startPosLine, startPosLine + lineLength));
+			std::string message = wOutput.StringOfSpan(SA::Span(startPosLine, startPosLine + lineLength));
 			if ((style == SCE_ERR_ESCSEQ) || (style == SCE_ERR_ESCSEQ_UNKNOWN) || (style >= SCE_ERR_ES_BLACK)) {
 				// GCC message with ANSI escape sequences
 				RemoveEscSeq(message);
@@ -2057,7 +2091,7 @@ void SciTEBase::GoMessage(int dir) {
 					// Get the position in line according to current tab setting
 					startSourceLine = wEditor.FindColumn(sourceLine, column);
 				}
-				EnsureRangeVisible(wEditor, SA::Range(startSourceLine));
+				EnsureRangeVisible(wEditor, SA::Span(startSourceLine));
 				if (props.GetInt("error.select.line") == 1) {
 					//select whole source source line from column with error
 					SetSelection(endSourceline, startSourceLine);
