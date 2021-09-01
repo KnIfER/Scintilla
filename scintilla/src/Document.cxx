@@ -113,7 +113,7 @@ size_t ActionDuration::ActionsInAllowedTime(double secondsAllowed) const noexcep
 }
 
 Document::Document(DocumentOption options) :
-	cb((FlagSet(options, DocumentOption::StylesNone)) == 0, (FlagSet(options, DocumentOption::TextLarge)) != 0),
+	cb(!FlagSet(options, DocumentOption::StylesNone), FlagSet(options, DocumentOption::TextLarge)),
 	durationStyleOneByte(0.000001, 0.0000001, 0.00001) {
 	refCount = 0;
 #ifdef _WIN32
@@ -2477,12 +2477,18 @@ bool Document::AddWatcher(DocWatcher *watcher, void *userData) {
 	return true;
 }
 
-bool Document::RemoveWatcher(DocWatcher *watcher, void *userData) {
-	std::vector<WatcherWithUserData>::iterator it =
-		std::find(watchers.begin(), watchers.end(), WatcherWithUserData(watcher, userData));
-	if (it != watchers.end()) {
-		watchers.erase(it);
-		return true;
+bool Document::RemoveWatcher(DocWatcher *watcher, void *userData) noexcept {
+	try {
+		// This can never fail as WatcherWithUserData constructor and == are noexcept
+		// but std::find is not noexcept.
+		std::vector<WatcherWithUserData>::iterator it =
+			std::find(watchers.begin(), watchers.end(), WatcherWithUserData(watcher, userData));
+		if (it != watchers.end()) {
+			watchers.erase(it);
+			return true;
+		}
+	} catch (...) {
+		// Ignore any exception
 	}
 	return false;
 }

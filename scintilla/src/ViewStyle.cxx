@@ -204,12 +204,12 @@ void ViewStyle::Init(size_t stylesSize_) {
 	elementColours.erase(Element::SelectionText);
 	elementColours.erase(Element::SelectionAdditionalText);
 	elementColours.erase(Element::SelectionSecondaryText);
-	elementColours.erase(Element::SelectionNoFocusText);
+	elementColours.erase(Element::SelectionInactiveText);
 	// Shades of grey for selection backgrounds
 	elementBaseColours[Element::SelectionBack] = ColourRGBA(0xc0, 0xc0, 0xc0, 0xff);
 	elementBaseColours[Element::SelectionAdditionalBack] = ColourRGBA(0xd7, 0xd7, 0xd7, 0xff);
 	elementBaseColours[Element::SelectionSecondaryBack] = ColourRGBA(0xb0, 0xb0, 0xb0, 0xff);
-	elementBaseColours[Element::SelectionNoFocusBack] = ColourRGBA(0x80, 0x80, 0x80, 0x3f);
+	elementBaseColours[Element::SelectionInactiveBack] = ColourRGBA(0x80, 0x80, 0x80, 0x3f);
 	elementAllowsTranslucent.insert({
 		Element::SelectionText,
 		Element::SelectionBack,
@@ -217,9 +217,9 @@ void ViewStyle::Init(size_t stylesSize_) {
 		Element::SelectionAdditionalBack,
 		Element::SelectionSecondaryText,
 		Element::SelectionSecondaryBack,
-		Element::SelectionNoFocusText,
+		Element::SelectionInactiveText,
 		Element::SelectionBack,
-		Element::SelectionNoFocusBack,
+		Element::SelectionInactiveBack,
 	});
 	selection.layer = Layer::Base;
 	selection.eolFilled = false;
@@ -520,7 +520,7 @@ bool ViewStyle::SelectionTextDrawn() const {
 		ElementIsSet(Element::SelectionText) ||
 		ElementIsSet(Element::SelectionAdditionalText) ||
 		ElementIsSet(Element::SelectionSecondaryText) ||
-		ElementIsSet(Element::SelectionNoFocusText);
+		ElementIsSet(Element::SelectionInactiveText);
 }
 
 bool ViewStyle::WhitespaceBackgroundDrawn() const {
@@ -651,7 +651,7 @@ bool ViewStyle::SetWrapIndentMode(WrapIndentMode wrapIndentMode_) noexcept {
 
 bool ViewStyle::IsBlockCaretStyle() const noexcept {
 	return ((caret.style & CaretStyle::InsMask) == CaretStyle::Block) ||
-		(FlagSet(caret.style, CaretStyle::OverstrikeBlock)) != 0;
+		FlagSet(caret.style, CaretStyle::OverstrikeBlock);
 }
 
 bool ViewStyle::IsCaretVisible() const noexcept {
@@ -662,7 +662,7 @@ bool ViewStyle::DrawCaretInsideSelection(bool inOverstrike, bool imeCaretBlockOv
 	if (FlagSet(caret.style, CaretStyle::BlockAfter))
 		return false;
 	return ((caret.style & CaretStyle::InsMask) == CaretStyle::Block) ||
-		(inOverstrike && (FlagSet(caret.style, CaretStyle::OverstrikeBlock)) != 0) ||
+		(inOverstrike && FlagSet(caret.style, CaretStyle::OverstrikeBlock)) ||
 		imeCaretBlockOverride;
 }
 

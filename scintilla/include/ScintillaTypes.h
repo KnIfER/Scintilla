@@ -171,8 +171,8 @@ enum class Element {
 	SelectionAdditionalBack = 13,
 	SelectionSecondaryText = 14,
 	SelectionSecondaryBack = 15,
-	SelectionNoFocusText = 16,
-	SelectionNoFocusBack = 17,
+	SelectionInactiveText = 16,
+	SelectionInactiveBack = 17,
 	Caret = 40,
 	CaretAdditional = 41,
 	CaretLineBack = 50,
@@ -775,10 +775,10 @@ constexpr KeyMod operator&(KeyMod a, KeyMod b) noexcept {
 	return static_cast<KeyMod>(static_cast<int>(a) & static_cast<int>(b));
 }
 
-// Test if an enum class value has the bit flag(s) of test set.
+// Test if an enum class value has some bit flag(s) of test set.
 template <typename T>
 constexpr bool FlagSet(T value, T test) {
-	return (static_cast<int>(value) & static_cast<int>(test)) == static_cast<int>(test);
+	return (static_cast<int>(value) & static_cast<int>(test)) != 0;
 }
 
 }
