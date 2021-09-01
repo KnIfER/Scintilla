@@ -535,6 +535,12 @@ class TestSimple(unittest.TestCase):
 		self.ed.Clear()
 		self.assertEquals(self.ed.Contents(), b"1c")
 
+	def testReplaceRectangular(self):
+		self.ed.AddText(5, b"a\nb\nc")
+		self.ed.SetSel(0,0)
+		self.ed.ReplaceRectangular(3, b"1\n2")
+		self.assertEquals(self.ed.Contents(), b"1a\n2b\nc")
+
 	def testCopyAllowLine(self):
 		lineEndType = self.ed.EOLMode
 		self.ed.EOLMode = self.ed.SC_EOL_LF
@@ -1308,6 +1314,31 @@ class TestRepresentations(unittest.TestCase):
 		self.ed.SetRepresentation(ohmSign, ohmExplained)
 		result = self.ed.GetRepresentation(ohmSign)
 		self.assertEquals(result, ohmExplained)
+
+	def testNul(self):
+		self.ed.SetRepresentation(b"", b"Nul")
+		result = self.ed.GetRepresentation(b"")
+		self.assertEquals(result, b"Nul")
+
+	def testAppearance(self):
+		ohmSign = b"\xe2\x84\xa6"
+		ohmExplained = b"U+2126 \xe2\x84\xa6"
+		self.ed.SetRepresentation(ohmSign, ohmExplained)
+		result = self.ed.GetRepresentationAppearance(ohmSign)
+		self.assertEquals(result, self.ed.SC_REPRESENTATION_BLOB)
+		self.ed.SetRepresentationAppearance(ohmSign, self.ed.SC_REPRESENTATION_PLAIN)
+		result = self.ed.GetRepresentationAppearance(ohmSign)
+		self.assertEquals(result, self.ed.SC_REPRESENTATION_PLAIN)
+
+	def testColour(self):
+		ohmSign = b"\xe2\x84\xa6"
+		ohmExplained = b"U+2126 \xe2\x84\xa6"
+		self.ed.SetRepresentation(ohmSign, ohmExplained)
+		result = self.ed.GetRepresentationColour(ohmSign)
+		self.assertEquals(result, 0)
+		self.ed.SetRepresentationColour(ohmSign, 0x10203040)
+		result = self.ed.GetRepresentationColour(ohmSign)
+		self.assertEquals(result, 0x10203040)
 
 @unittest.skipUnless(lexersAvailable, "no lexers included")
 class TestProperties(unittest.TestCase):
