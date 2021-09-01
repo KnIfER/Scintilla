@@ -1,4 +1,6 @@
-// Unit Tests for Scintilla internal data structures
+/** @file testSparseVector.cxx
+ ** Unit Tests for Scintilla internal data structures
+ **/
 
 #include <cstddef>
 #include <cassert>
@@ -21,7 +23,7 @@
 
 #include "catch.hpp"
 
-using namespace Scintilla;
+using namespace Scintilla::Internal;
 
 // Test SparseVector.
 

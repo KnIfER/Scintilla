@@ -6,7 +6,7 @@
 #ifndef SCINTILLAGTK_H
 #define SCINTILLAGTK_H
 
-namespace Scintilla {
+namespace Scintilla::Internal {
 
 class ScintillaGTKAccessible;
 
@@ -30,7 +30,6 @@ class ScintillaGTK : public ScintillaBase {
 	Window scrollbarh;
 	GtkAdjustment *adjustmentv;
 	GtkAdjustment *adjustmenth;
-	Window wSelection;
 	int verticalScrollBarWidth;
 	int horizontalScrollBarHeight;
 
@@ -51,6 +50,7 @@ class ScintillaGTK : public ScintillaBase {
 	static inline GdkAtom atomUriList {};
 	static inline GdkAtom atomDROPFILES_DND {};
 	GdkAtom atomSought;
+	size_t inClearSelection = 0;
 
 #if PLAT_GTK_WIN32
 	CLIPFORMAT cfColumnSelect;
@@ -105,9 +105,9 @@ private:
 	std::string UTF8FromEncoded(std::string_view encoded) const override;
 	std::string EncodedFromUTF8(std::string_view utf8) const override;
 public: 	// Public for scintilla_send_message
-	sptr_t WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) override;
+	sptr_t WndProc(Scintilla::Message iMessage, Scintilla::uptr_t wParam, Scintilla::sptr_t lParam) override;
 private:
-	sptr_t DefWndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) override;
+	sptr_t DefWndProc(Scintilla::Message iMessage, Scintilla::uptr_t wParam, Scintilla::sptr_t lParam) override;
 	struct TimeThunk {
 		TickReason reason;
 		ScintillaGTK *scintilla;
@@ -131,13 +131,13 @@ private:
 	void ReconfigureScrollBars() override;
 	void NotifyChange() override;
 	void NotifyFocus(bool focus) override;
-	void NotifyParent(SCNotification scn) override;
-	void NotifyKey(int key, int modifiers);
+	void NotifyParent(Scintilla::NotificationData scn) override;
+	void NotifyKey(Scintilla::Keys key, Scintilla::KeyMod modifiers);
 	void NotifyURIDropped(const char *list);
 	const char *CharacterSetID() const;
 	std::unique_ptr<CaseFolder> CaseFolderForEncoding() override;
 	std::string CaseMapString(const std::string &s, CaseMapping caseMapping) override;
-	int KeyDefault(int key, int modifiers) override;
+	int KeyDefault(Scintilla::Keys key, Scintilla::KeyMod modifiers) override;
 	void CopyToClipboard(const SelectionText &selectedText) override;
 	void Copy() override;
 	void RequestSelection(GdkAtom atomSelection);
@@ -160,9 +160,13 @@ private:
 	static void ClipboardGetSelection(GtkClipboard *clip, GtkSelectionData *selection_data, guint info, void *data);
 	static void ClipboardClearSelection(GtkClipboard *clip, void *data);
 
+	void ClearPrimarySelection();
+	void PrimaryGetSelectionThis(GtkClipboard *clip, GtkSelectionData *selection_data, guint info);
+	static void PrimaryGetSelection(GtkClipboard *clip, GtkSelectionData *selection_data, guint info, gpointer pSci);
+	void PrimaryClearSelectionThis(GtkClipboard *clip);
+	static void PrimaryClearSelection(GtkClipboard *clip, gpointer pSci);
+
 	void UnclaimSelection(GdkEventSelection *selection_event);
-	static void PrimarySelection(GtkWidget *widget, GtkSelectionData *selection_data, guint info, guint time_stamp, ScintillaGTK *sciThis);
-	static gboolean PrimaryClear(GtkWidget *widget, GdkEventSelection *event, ScintillaGTK *sciThis);
 	void Resize(int width, int height);
 
 	// Callback functions
@@ -225,8 +229,8 @@ private:
 	void PreeditChangedInlineThis();
 	void PreeditChangedWindowedThis();
 	static void PreeditChanged(GtkIMContext *context, ScintillaGTK *sciThis);
-	void MoveImeCarets(int pos);
-	void DrawImeIndicator(int indicator, int len);
+	void MoveImeCarets(Sci::Position pos);
+	void DrawImeIndicator(int indicator, Sci::Position len);
 	void SetCandidateWindowPos();
 
 	static void StyleSetText(GtkWidget *widget, GtkStyle *previous, void *);

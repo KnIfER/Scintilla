@@ -1,4 +1,6 @@
-// Unit Tests for Scintilla internal data structures
+/** @file testDecoration.cxx
+ ** Unit Tests for Scintilla internal data structures
+ **/
 
 #include <cstddef>
 #include <cstring>
@@ -22,7 +24,7 @@
 
 const int indicator=4;
 
-using namespace Scintilla;
+using namespace Scintilla::Internal;
 
 // Test Decoration.
 

@@ -1,4 +1,6 @@
-// Unit Tests for Scintilla internal data structures
+/** @file unitTest.cxx
+ ** Unit Tests for Scintilla internal data structures
+ **/
 
 /*
     Currently tested:
@@ -54,7 +56,7 @@
 #define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
 #include "catch.hpp"
 
-using namespace Scintilla;
+using namespace Scintilla::Internal;
 
 // Needed for PLATFORM_ASSERT in code being tested
 

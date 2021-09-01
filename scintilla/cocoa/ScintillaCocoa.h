@@ -28,7 +28,7 @@
 #include "ILoader.h"
 #include "ILexer.h"
 
-#include "CharacterCategory.h"
+#include "CharacterCategoryMap.h"
 #include "Position.h"
 #include "UniqueString.h"
 #include "SplitVector.h"
@@ -80,7 +80,7 @@ extern "C" NSString *ScintillaRecPboardType;
 - (void) idleTriggered: (NSNotification *) notification;
 @end
 
-namespace Scintilla {
+namespace Scintilla::Internal {
 
 /**
  * Main scintilla class, implemented for OS X (Cocoa).
@@ -97,6 +97,8 @@ private:
 	intptr_t notifyObj;
 
 	bool capturedMouse;
+	bool isFirstResponder;
+	bool isActive;
 
 	bool enteredSetScrollingSize;
 
@@ -135,7 +137,7 @@ public:
 
 	void SetDelegate(id<ScintillaNotificationProtocol> delegate_);
 	void RegisterNotifyCallback(intptr_t windowid, SciNotifyFunc callback);
-	sptr_t WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) override;
+	sptr_t WndProc(Scintilla::Message iMessage, uptr_t wParam, sptr_t lParam) override;
 
 	NSScrollView *ScrollContainer() const;
 	SCIContentView *ContentView();
@@ -144,7 +146,7 @@ public:
 	bool Draw(NSRect rect, CGContextRef gc);
 	void PaintMargin(NSRect aRect);
 
-	sptr_t DefWndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) override;
+	sptr_t DefWndProc(Scintilla::Message iMessage, uptr_t wParam, sptr_t lParam) override;
 	void TickFor(TickReason reason) override;
 	bool FineTickerRunning(TickReason reason) override;
 	void FineTickerStart(TickReason reason, int millis, int tolerance) override;
@@ -164,7 +166,7 @@ public:
 	// Notifications for the owner.
 	void NotifyChange() override;
 	void NotifyFocus(bool focus) override;
-	void NotifyParent(SCNotification scn) override;
+	void NotifyParent(Scintilla::NotificationData scn) override;
 	void NotifyURIDropped(const char *uri);
 
 	bool HasSelection();
@@ -196,7 +198,7 @@ public:
 	void ObserverRemove();
 	void IdleWork() override;
 	void QueueIdleWork(WorkItems items, Sci::Position upTo) override;
-	ptrdiff_t InsertText(NSString *input, CharacterSource charSource);
+	ptrdiff_t InsertText(NSString *input, Scintilla::CharacterSource charSource);
 	NSRange PositionsFromCharacters(NSRange rangeCharacters) const;
 	NSRange CharactersFromPositions(NSRange rangePositions) const;
 	NSString *RangeTextAsString(NSRange rangePositions) const;
@@ -242,7 +244,11 @@ public:
 	NSMenu *CreateContextMenu(NSEvent *event);
 	void HandleCommand(NSInteger command);
 
-	void ActiveStateChanged(bool isActive);
+	void SetFirstResponder(bool isFirstResponder_);
+	void ActiveStateChanged(bool isActive_);
+	void SetFocusActiveState();
+	void UpdateBaseElements() override;
+
 	void WindowWillMove();
 
 	// Find indicator

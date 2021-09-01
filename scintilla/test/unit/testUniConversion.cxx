@@ -1,4 +1,6 @@
-// Unit Tests for Scintilla internal data structures
+/** @file testUniConversion.cxx
+ ** Unit Tests for Scintilla internal data structures
+ **/
 
 #include <cstring>
 
@@ -15,7 +17,7 @@
 
 #include "catch.hpp"
 
-using namespace Scintilla;
+using namespace Scintilla::Internal;
 
 // Test UniConversion.
 // Use examples from Wikipedia:

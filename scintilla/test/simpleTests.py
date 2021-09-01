@@ -1916,6 +1916,177 @@ class TestStyleAttributes(unittest.TestCase):
 		self.ed.SetDefaultFoldDisplayText(0, b"...")
 		self.assertEquals(self.ed.GetDefaultFoldDisplayText(), b"...")
 
+	def testFontLocale(self):
+		initialLocale = "en-us".encode("UTF-8")
+		testLocale = "zh-Hans".encode("UTF-8")
+		self.assertEquals(self.ed.GetFontLocale(), initialLocale)
+		self.ed.FontLocale = testLocale
+		self.assertEquals(self.ed.GetFontLocale(), testLocale)
+
+class TestElements(unittest.TestCase):
+	""" These tests are just to ensure that the calls set and retrieve values.
+	They do not check the visual appearance of the style attributes.
+	"""
+	def setUp(self):
+		self.xite = Xite.xiteFrame
+		self.ed = self.xite.ed
+		self.ed.ClearAll()
+		self.ed.EmptyUndoBuffer()
+		self.testColourAlpha = 0x18171615
+		self.opaque = 0xff000000
+		self.dropAlpha = 0x00ffffff
+
+	def tearDown(self):
+		pass
+		
+	def ElementColour(self, element):
+		# & 0xffffffff prevents sign extension issues
+		return self.ed.GetElementColour(element) & 0xffffffff
+
+	def RestoreCaretLine(self):
+		self.ed.CaretLineLayer = 0
+		self.ed.CaretLineFrame = 0
+		self.ed.ResetElementColour(self.ed.SC_ELEMENT_CARET_LINE_BACK)
+		self.ed.CaretLineVisibleAlways = False
+
+	def testIsSet(self):
+		self.assertFalse(self.ed.GetElementIsSet(self.ed.SC_ELEMENT_SELECTION_TEXT))
+
+	def testAllowsTranslucent(self):
+		self.assertFalse(self.ed.GetElementAllowsTranslucent(self.ed.SC_ELEMENT_LIST))
+		self.assertTrue(self.ed.GetElementAllowsTranslucent(self.ed.SC_ELEMENT_SELECTION_TEXT))
+
+	def testChanging(self):
+		self.ed.SetElementColour(self.ed.SC_ELEMENT_LIST_BACK, self.testColourAlpha)
+		self.assertEquals(self.ElementColour(self.ed.SC_ELEMENT_LIST_BACK), self.testColourAlpha)
+		self.assertTrue(self.ed.GetElementIsSet(self.ed.SC_ELEMENT_LIST_BACK))
+
+	def testReset(self):
+		self.ed.SetElementColour(self.ed.SC_ELEMENT_SELECTION_ADDITIONAL_TEXT, self.testColourAlpha)
+		self.assertEquals(self.ElementColour(self.ed.SC_ELEMENT_SELECTION_ADDITIONAL_TEXT), self.testColourAlpha)
+		self.ed.ResetElementColour(self.ed.SC_ELEMENT_SELECTION_ADDITIONAL_TEXT)
+		self.assertEquals(self.ElementColour(self.ed.SC_ELEMENT_SELECTION_ADDITIONAL_TEXT), 0)
+		self.assertFalse(self.ed.GetElementIsSet(self.ed.SC_ELEMENT_SELECTION_ADDITIONAL_TEXT))
+
+	def testBaseColour(self):
+		if sys.platform == "win32":
+			# SC_ELEMENT_LIST* base colours only currently implemented on Win32
+			text = self.ed.GetElementBaseColour(self.ed.SC_ELEMENT_LIST)
+			back = self.ed.GetElementBaseColour(self.ed.SC_ELEMENT_LIST_BACK)
+			self.assertEquals(text & self.opaque, self.opaque)
+			self.assertEquals(back & self.opaque, self.opaque)
+			self.assertNotEquals(text & self.dropAlpha, back & self.dropAlpha)
+			selText = self.ed.GetElementBaseColour(self.ed.SC_ELEMENT_LIST_SELECTED)
+			selBack = self.ed.GetElementBaseColour(self.ed.SC_ELEMENT_LIST_SELECTED_BACK)
+			self.assertEquals(selText & self.opaque, self.opaque)
+			self.assertEquals(selBack & self.opaque, self.opaque)
+			self.assertNotEquals(selText & self.dropAlpha, selBack & self.dropAlpha)
+
+	def testSelectionLayer(self):
+		self.ed.SelectionLayer = self.ed.SC_LAYER_OVER_TEXT
+		self.assertEquals(self.ed.SelectionLayer, self.ed.SC_LAYER_OVER_TEXT)
+		self.ed.SelectionLayer = self.ed.SC_LAYER_BASE
+		self.assertEquals(self.ed.SelectionLayer, self.ed.SC_LAYER_BASE)
+		
+	def testCaretLine(self):
+		# Newer Layer / ElementColour API
+		self.assertEquals(self.ed.CaretLineLayer, 0)
+		self.assertFalse(self.ed.GetElementIsSet(self.ed.SC_ELEMENT_CARET_LINE_BACK))
+		self.assertEquals(self.ed.CaretLineFrame, 0)
+		self.assertFalse(self.ed.CaretLineVisibleAlways)
+		
+		self.ed.CaretLineLayer = 2
+		self.assertEquals(self.ed.CaretLineLayer, 2)
+		self.ed.CaretLineFrame = 2
+		self.assertEquals(self.ed.CaretLineFrame, 2)
+		self.ed.CaretLineVisibleAlways = True
+		self.assertTrue(self.ed.CaretLineVisibleAlways)
+		self.ed.SetElementColour(self.ed.SC_ELEMENT_CARET_LINE_BACK, self.testColourAlpha)
+		self.assertEquals(self.ElementColour(self.ed.SC_ELEMENT_CARET_LINE_BACK), self.testColourAlpha)
+		
+		self.RestoreCaretLine()
+
+	def testCaretLineLayerDiscouraged(self):
+		# Check old discouraged APIs
+		# This is s bit tricky as there is no clean mapping: parts of the old state are distributed to
+		# sometimes-multiple parts of the new state.
+		backColour = 0x102030
+		backColourOpaque = backColour | self.opaque
+		self.assertEquals(self.ed.CaretLineVisible, 0)
+		self.ed.CaretLineVisible = 1
+		self.assertTrue(self.ed.GetElementIsSet(self.ed.SC_ELEMENT_CARET_LINE_BACK))
+		self.assertEquals(self.ed.CaretLineVisible, 1)
+		self.ed.CaretLineBack = backColour
+		self.assertEquals(self.ed.CaretLineBack, backColour)
+		# Check with newer API
+		self.assertTrue(self.ed.GetElementIsSet(self.ed.SC_ELEMENT_CARET_LINE_BACK))
+		self.assertEquals(self.ElementColour(self.ed.SC_ELEMENT_CARET_LINE_BACK), backColourOpaque)
+		self.assertEquals(self.ed.CaretLineLayer, 0)
+
+		alpha = 0x7f
+		self.ed.CaretLineBackAlpha = alpha
+		self.assertEquals(self.ed.CaretLineBackAlpha, alpha)
+		backColourTranslucent = backColour | (alpha << 24)
+		self.assertEquals(self.ElementColour(self.ed.SC_ELEMENT_CARET_LINE_BACK), backColourTranslucent)
+		self.assertEquals(self.ed.CaretLineLayer, 2)
+		
+		self.ed.CaretLineBackAlpha = 0x100
+		self.assertEquals(self.ed.CaretLineBackAlpha, 0x100)
+		self.assertEquals(self.ed.CaretLineLayer, 0)	# SC_ALPHA_NOALPHA moved to base layer
+		
+		self.RestoreCaretLine()
+		
+		# Try other orders
+
+		self.ed.CaretLineBackAlpha = 0x100
+		self.assertEquals(self.ed.CaretLineBackAlpha, 0x100)
+		self.assertEquals(self.ed.CaretLineLayer, 0)	# SC_ALPHA_NOALPHA moved to base layer
+		self.ed.CaretLineBack = backColour
+		self.assertTrue(self.ed.GetElementIsSet(self.ed.SC_ELEMENT_CARET_LINE_BACK))
+		self.ed.CaretLineVisible = 0
+		self.assertFalse(self.ed.GetElementIsSet(self.ed.SC_ELEMENT_CARET_LINE_BACK))
+
+		self.RestoreCaretLine()
+
+	def testMarkerLayer(self):
+		self.assertEquals(self.ed.MarkerGetLayer(1), 0)
+		self.ed.MarkerSetAlpha(1, 23)
+		self.assertEquals(self.ed.MarkerGetLayer(1), 2)
+		self.ed.MarkerSetAlpha(1, 0x100)
+		self.assertEquals(self.ed.MarkerGetLayer(1), 0)
+
+	def testHotSpot(self):
+		self.assertFalse(self.ed.GetElementIsSet(self.ed.SC_ELEMENT_HOT_SPOT_ACTIVE))
+		self.assertFalse(self.ed.GetElementIsSet(self.ed.SC_ELEMENT_HOT_SPOT_ACTIVE_BACK))
+		self.assertEquals(self.ed.HotspotActiveFore, 0)
+		self.assertEquals(self.ed.HotspotActiveBack, 0)
+		
+		testColour = 0x804020
+		resetColour = 0x112233	# Doesn't get set
+		self.ed.SetHotspotActiveFore(1, testColour)
+		self.assertEquals(self.ed.HotspotActiveFore, testColour)
+		self.assertTrue(self.ed.GetElementIsSet(self.ed.SC_ELEMENT_HOT_SPOT_ACTIVE))
+		self.assertEquals(self.ElementColour(self.ed.SC_ELEMENT_HOT_SPOT_ACTIVE), testColour | self.opaque)
+		self.ed.SetHotspotActiveFore(0, resetColour)
+		self.assertEquals(self.ed.HotspotActiveFore, 0)
+		self.assertFalse(self.ed.GetElementIsSet(self.ed.SC_ELEMENT_HOT_SPOT_ACTIVE))
+		self.assertEquals(self.ElementColour(self.ed.SC_ELEMENT_HOT_SPOT_ACTIVE), 0)
+		
+		translucentColour = 0x50403020
+		self.ed.SetElementColour(self.ed.SC_ELEMENT_HOT_SPOT_ACTIVE, translucentColour)
+		self.assertEquals(self.ElementColour(self.ed.SC_ELEMENT_HOT_SPOT_ACTIVE), translucentColour)
+		self.assertEquals(self.ed.HotspotActiveFore, translucentColour & self.dropAlpha)
+
+		backColour = 0x204080
+		self.ed.SetHotspotActiveBack(1, backColour)
+		self.assertEquals(self.ed.HotspotActiveBack, backColour)
+		self.assertTrue(self.ed.GetElementIsSet(self.ed.SC_ELEMENT_HOT_SPOT_ACTIVE_BACK))
+		self.assertEquals(self.ElementColour(self.ed.SC_ELEMENT_HOT_SPOT_ACTIVE_BACK), backColour | self.opaque)
+
+		# Restore
+		self.ed.ResetElementColour(self.ed.SC_ELEMENT_HOT_SPOT_ACTIVE)
+		self.ed.ResetElementColour(self.ed.SC_ELEMENT_HOT_SPOT_ACTIVE_BACK)
+
 class TestIndices(unittest.TestCase):
 	def setUp(self):
 		self.xite = Xite.xiteFrame

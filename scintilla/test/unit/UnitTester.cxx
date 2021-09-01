@@ -1,5 +1,6 @@
-// UnitTester.cpp : Defines the entry point for the console application.
-//
+/** @file UnitTester.cxx
+ ** UnitTester.cpp : Defines the entry point for the console application.
+ **/
 
 // Catch uses std::uncaught_exception which is deprecated in C++17.
 // This define silences a warning from Visual C++.
@@ -19,24 +20,22 @@
 #define CATCH_CONFIG_RUNNER
 #include "catch.hpp"
 
+using namespace Scintilla::Internal;
+
 // Needed for PLATFORM_ASSERT in code being tested
 
-namespace Scintilla {
-
-void Platform::Assert(const char *c, const char *file, int line) {
+void Platform::Assert(const char *c, const char *file, int line) noexcept {
 	fprintf(stderr, "Assertion [%s] failed at %s %d\n", c, file, line);
 	abort();
 }
 
-void Platform::DebugPrintf(const char *format, ...) {
+void Platform::DebugPrintf(const char *format, ...) noexcept {
 	char buffer[2000];
 	va_list pArguments;
 	va_start(pArguments, format);
 	vsprintf(buffer, format, pArguments);
 	va_end(pArguments);
 	fprintf(stderr, "%s", buffer);
-}
-
 }
 
 int main(int argc, char* argv[]) {

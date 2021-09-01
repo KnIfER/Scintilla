@@ -1,4 +1,6 @@
-// Unit Tests for Scintilla internal data structures
+/** @file testPartitioning.cxx
+ ** Unit Tests for Scintilla internal data structures
+ **/
 
 #include <cstddef>
 #include <cstring>
@@ -18,7 +20,7 @@
 
 #include "catch.hpp"
 
-using namespace Scintilla;
+using namespace Scintilla::Internal;
 
 const int growSize = 4;
 

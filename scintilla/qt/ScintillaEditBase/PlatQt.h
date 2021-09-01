@@ -1,4 +1,4 @@
-//
+// @file PlatQt.h
 //          Copyright (c) 1990-2011, Scientific Toolworks, Inc.
 //
 // The License.txt file describes the conditions under which this software may be distributed.
@@ -20,6 +20,8 @@
 
 #include "Debugging.h"
 #include "Geometry.h"
+#include "ScintillaTypes.h"
+#include "ScintillaMessages.h"
 #include "Platform.h"
 
 #include <QUrl>
@@ -27,11 +29,11 @@
 #include <QPainter>
 #include <QHash>
 
-namespace Scintilla {
+namespace Scintilla::Internal {
 
-const char *CharacterSetID(int characterSet);
+const char *CharacterSetID(Scintilla::CharacterSet characterSet);
 
-inline QColor QColorFromColourAlpha(ColourAlpha ca)
+inline QColor QColorFromColourRGBA(ColourRGBA ca)
 {
 	return QColor(ca.GetRed(), ca.GetGreen(), ca.GetBlue(), ca.GetAlpha());
 }
@@ -89,10 +91,10 @@ public:
 	void SetMode(SurfaceMode mode) override;
 
 	void Release() noexcept override;
-	int Supports(int feature) noexcept override;
+	int SupportsFeature(Scintilla::Supports feature) noexcept override;
 	bool Initialised() override;
-	void PenColour(ColourAlpha fore);
-	void PenColourWidth(ColourAlpha fore, XYPOSITION strokeWidth);
+	void PenColour(ColourRGBA fore);
+	void PenColourWidth(ColourRGBA fore, XYPOSITION strokeWidth);
 	int LogPixelsY() override;
 	int PixelDivisions() override;
 	int DeviceHeightFont(int points) override;
@@ -116,21 +118,21 @@ public:
 	std::unique_ptr<IScreenLineLayout> Layout(const IScreenLine *screenLine) override;
 
 	void DrawTextNoClip(PRectangle rc, const Font *font, XYPOSITION ybase,
-		std::string_view text, ColourAlpha fore, ColourAlpha back) override;
+		std::string_view text, ColourRGBA fore, ColourRGBA back) override;
 	void DrawTextClipped(PRectangle rc, const Font *font, XYPOSITION ybase,
-		std::string_view text, ColourAlpha fore, ColourAlpha back) override;
+		std::string_view text, ColourRGBA fore, ColourRGBA back) override;
 	void DrawTextTransparent(PRectangle rc, const Font *font, XYPOSITION ybase,
-		std::string_view text, ColourAlpha fore) override;
+		std::string_view text, ColourRGBA fore) override;
 	void MeasureWidths(const Font *font, std::string_view text,
 		XYPOSITION *positions) override;
 	XYPOSITION WidthText(const Font *font, std::string_view text) override;
 
 	void DrawTextNoClipUTF8(PRectangle rc, const Font *font_, XYPOSITION ybase,
-		std::string_view text, ColourAlpha fore, ColourAlpha back) override;
+		std::string_view text, ColourRGBA fore, ColourRGBA back) override;
 	void DrawTextClippedUTF8(PRectangle rc, const Font *font_, XYPOSITION ybase,
-		std::string_view text, ColourAlpha fore, ColourAlpha back) override;
+		std::string_view text, ColourRGBA fore, ColourRGBA back) override;
 	void DrawTextTransparentUTF8(PRectangle rc, const Font *font_, XYPOSITION ybase,
-		std::string_view text, ColourAlpha fore) override;
+		std::string_view text, ColourRGBA fore) override;
 	void MeasureWidthsUTF8(const Font *font_, std::string_view text,
 		XYPOSITION *positions) override;
 	XYPOSITION WidthTextUTF8(const Font *font_, std::string_view text) override;
@@ -146,7 +148,7 @@ public:
 	void FlushCachedState() override;
 	void FlushDrawing() override;
 
-	void BrushColour(ColourAlpha back);
+	void BrushColour(ColourRGBA back);
 	void SetCodec(const Font *font);
 	void SetFont(const Font *font);
 

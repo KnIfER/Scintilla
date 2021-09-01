@@ -33,6 +33,10 @@
 
 #import <Foundation/NSGeometry.h>
 
+#import "ScintillaTypes.h"
+#import "ScintillaMessages.h"
+#import "ScintillaStructures.h"
+
 #import "Debugging.h"
 #import "Geometry.h"
 #import "Platform.h"
@@ -45,6 +49,7 @@
 #import "PlatCocoa.h"
 
 using namespace Scintilla;
+using namespace Scintilla::Internal;
 
 extern sptr_t scintilla_send_message(void *sci, unsigned int iMessage, uptr_t wParam, sptr_t lParam);
 
@@ -53,7 +58,7 @@ extern sptr_t scintilla_send_message(void *sci, unsigned int iMessage, uptr_t wP
 /**
  * Converts a Point as used by Scintilla to a Quartz-style CGPoint.
  */
-inline CGPoint CGPointFromPoint(Scintilla::Point pt) {
+inline CGPoint CGPointFromPoint(Scintilla::Internal::Point pt) {
 	return CGPointMake(pt.x, pt.y);
 }
 
@@ -340,12 +345,12 @@ void GetPositions(CTLineRef line, std::vector<CGFloat> &positions) {
 			 positions.begin(), std::plus<CGFloat>());
 }
 
-const int SupportsCocoa[] = {
-	SC_SUPPORTS_LINE_DRAWS_FINAL,
-	SC_SUPPORTS_PIXEL_DIVISIONS,
-	SC_SUPPORTS_FRACTIONAL_STROKE_WIDTH,
-	SC_SUPPORTS_TRANSLUCENT_STROKE,
-	SC_SUPPORTS_PIXEL_MODIFICATION,
+const Supports SupportsCocoa[] = {
+	Supports::LineDrawsFinal,
+	Supports::PixelDivisions,
+	Supports::FractionalStrokeWidth,
+	Supports::TranslucentStroke,
+	Supports::PixelModification,
 };
 
 }
@@ -487,8 +492,8 @@ void SurfaceImpl::SetMode(SurfaceMode mode_) {
 
 //--------------------------------------------------------------------------------------------------
 
-int SurfaceImpl::Supports(int feature) noexcept {
-	for (const int f : SupportsCocoa) {
+int SurfaceImpl::SupportsFeature(Supports feature) noexcept {
+	for (const Supports f : SupportsCocoa) {
 		if (f == feature)
 			return 1;
 	}
@@ -497,7 +502,7 @@ int SurfaceImpl::Supports(int feature) noexcept {
 
 //--------------------------------------------------------------------------------------------------
 
-void SurfaceImpl::FillColour(ColourAlpha fill) {
+void SurfaceImpl::FillColour(ColourRGBA fill) {
 	// Set the Fill color to match
 	CGContextSetRGBFillColor(gc,
 				 fill.GetRedComponent(),
@@ -508,7 +513,7 @@ void SurfaceImpl::FillColour(ColourAlpha fill) {
 
 //--------------------------------------------------------------------------------------------------
 
-void SurfaceImpl::PenColourAlpha(ColourAlpha fore) {
+void SurfaceImpl::PenColourAlpha(ColourRGBA fore) {
 	// Set the Stroke color to match
 	CGContextSetRGBStrokeColor(gc,
 				   fore.GetRedComponent(),
@@ -651,7 +656,7 @@ void SurfaceImpl::PolyLine(const Point *pts, size_t npts, Stroke stroke) {
 
 //--------------------------------------------------------------------------------------------------
 
-void SurfaceImpl::Polygon(const Scintilla::Point *pts, size_t npts, FillStroke fillStroke) {
+void SurfaceImpl::Polygon(const Scintilla::Internal::Point *pts, size_t npts, FillStroke fillStroke) {
 	std::vector<CGPoint> points;
 	std::transform(pts, pts + npts, std::back_inserter(points), CGPointFromPoint);
 
@@ -741,7 +746,7 @@ void SurfaceImpl::FillRectangle(PRectangle rc, Surface &surfacePattern) {
 	// For now, assume that copy can only be called on PixMap surfaces. Shows up black.
 	CGImageRef image = patternSurface.CreateImage();
 	if (image == NULL) {
-		FillRectangle(rc, ColourDesired(0));
+		FillRectangle(rc, ColourRGBA::FromRGB(0));
 		return;
 	}
 
@@ -780,7 +785,7 @@ void SurfaceImpl::FillRectangle(PRectangle rc, Surface &surfacePattern) {
 }
 
 void SurfaceImpl::RoundedRectangle(PRectangle rc, FillStroke fillStroke) {
-	// This is only called from the margin marker drawing code for SC_MARK_ROUNDRECT
+	// This is only called from the margin marker drawing code for MarkerSymbol::RoundRect
 	// The Win32 version does
 	//  ::RoundRect(hdc, rc.left + 1, rc.top, rc.right - 1, rc.bottom, 8, 8 );
 	// which is a rectangle with rounded corners each having a radius of 4 pixels.
@@ -888,7 +893,7 @@ static void DrawChamferedRectangle(CGContextRef gc, PRectangle rc, int cornerSiz
 	CGContextDrawPath(gc, mode);
 }
 
-void Scintilla::SurfaceImpl::AlphaRectangle(PRectangle rc, XYPOSITION cornerSize, FillStroke fillStroke) {
+void Scintilla::Internal::SurfaceImpl::AlphaRectangle(PRectangle rc, XYPOSITION cornerSize, FillStroke fillStroke) {
 	if (gc) {
 		const XYPOSITION halfStroke = fillStroke.stroke.width / 2.0f;
 		// Set the Fill color to match
@@ -937,7 +942,7 @@ void Scintilla::SurfaceImpl::AlphaRectangle(PRectangle rc, XYPOSITION cornerSize
 	}
 }
 
-void Scintilla::SurfaceImpl::GradientRectangle(PRectangle rc, const std::vector<ColourStop> &stops, GradientOptions options) {
+void Scintilla::Internal::SurfaceImpl::GradientRectangle(PRectangle rc, const std::vector<ColourStop> &stops, GradientOptions options) {
 	if (!gc) {
 		return;
 	}
@@ -1135,7 +1140,7 @@ void SurfaceImpl::CopyImageRectangle(SurfaceImpl *source, PRectangle srcRect, PR
 	CGImageRelease(image);
 }
 
-void SurfaceImpl::Copy(PRectangle rc, Scintilla::Point from, Surface &surfaceSource) {
+void SurfaceImpl::Copy(PRectangle rc, Scintilla::Internal::Point from, Surface &surfaceSource) {
 	// Maybe we have to make the Surface two contexts:
 	// a bitmap context which we do all the drawing on, and then a "real" context
 	// which we copy the output to when we call "Synchronize". Ugh! Gross and slow!
@@ -1147,7 +1152,7 @@ void SurfaceImpl::Copy(PRectangle rc, Scintilla::Point from, Surface &surfaceSou
 	CGImageRef image = source.CreateImage();
 	// If we could not get an image reference, fill the rectangle black
 	if (image == NULL) {
-		FillRectangle(rc, ColourDesired(0));
+		FillRectangle(rc, ColourRGBA::FromRGB(0));
 		return;
 	}
 
@@ -1179,7 +1184,7 @@ std::unique_ptr<IScreenLineLayout> SurfaceImpl::Layout(const IScreenLine *screen
 //--------------------------------------------------------------------------------------------------
 
 void SurfaceImpl::DrawTextNoClip(PRectangle rc, const Font *font_, XYPOSITION ybase, std::string_view text,
-				 ColourAlpha fore, ColourAlpha back) {
+				 ColourRGBA fore, ColourRGBA back) {
 	FillRectangleAligned(rc, back);
 	DrawTextTransparent(rc, font_, ybase, text, fore);
 }
@@ -1187,7 +1192,7 @@ void SurfaceImpl::DrawTextNoClip(PRectangle rc, const Font *font_, XYPOSITION yb
 //--------------------------------------------------------------------------------------------------
 
 void SurfaceImpl::DrawTextClipped(PRectangle rc, const Font *font_, XYPOSITION ybase, std::string_view text,
-				  ColourAlpha fore, ColourAlpha back) {
+				  ColourRGBA fore, ColourRGBA back) {
 	CGContextSaveGState(gc);
 	CGContextClipToRect(gc, PRectangleToCGRect(rc));
 	DrawTextNoClip(rc, font_, ybase, text, fore, back);
@@ -1196,7 +1201,7 @@ void SurfaceImpl::DrawTextClipped(PRectangle rc, const Font *font_, XYPOSITION y
 
 //--------------------------------------------------------------------------------------------------
 
-CFStringEncoding EncodingFromCharacterSet(bool unicode, int characterSet) {
+CFStringEncoding EncodingFromCharacterSet(bool unicode, CharacterSet characterSet) {
 	if (unicode)
 		return kCFStringEncodingUTF8;
 
@@ -1204,47 +1209,47 @@ CFStringEncoding EncodingFromCharacterSet(bool unicode, int characterSet) {
 	enum { notSupported = kCFStringEncodingISOLatin1};
 
 	switch (characterSet) {
-	case SC_CHARSET_ANSI:
+	case CharacterSet::Ansi:
 		return kCFStringEncodingISOLatin1;
-	case SC_CHARSET_DEFAULT:
+	case CharacterSet::Default:
 		return kCFStringEncodingISOLatin1;
-	case SC_CHARSET_BALTIC:
+	case CharacterSet::Baltic:
 		return kCFStringEncodingWindowsBalticRim;
-	case SC_CHARSET_CHINESEBIG5:
+	case CharacterSet::ChineseBig5:
 		return kCFStringEncodingBig5;
-	case SC_CHARSET_EASTEUROPE:
+	case CharacterSet::EastEurope:
 		return kCFStringEncodingWindowsLatin2;
-	case SC_CHARSET_GB2312:
+	case CharacterSet::GB2312:
 		return kCFStringEncodingGB_18030_2000;
-	case SC_CHARSET_GREEK:
+	case CharacterSet::Greek:
 		return kCFStringEncodingWindowsGreek;
-	case SC_CHARSET_HANGUL:
+	case CharacterSet::Hangul:
 		return kCFStringEncodingEUC_KR;
-	case SC_CHARSET_MAC:
+	case CharacterSet::Mac:
 		return kCFStringEncodingMacRoman;
-	case SC_CHARSET_OEM:
+	case CharacterSet::Oem:
 		return kCFStringEncodingISOLatin1;
-	case SC_CHARSET_RUSSIAN:
+	case CharacterSet::Russian:
 		return kCFStringEncodingKOI8_R;
-	case SC_CHARSET_CYRILLIC:
+	case CharacterSet::Cyrillic:
 		return kCFStringEncodingWindowsCyrillic;
-	case SC_CHARSET_SHIFTJIS:
+	case CharacterSet::ShiftJis:
 		return kCFStringEncodingShiftJIS;
-	case SC_CHARSET_SYMBOL:
+	case CharacterSet::Symbol:
 		return kCFStringEncodingMacSymbol;
-	case SC_CHARSET_TURKISH:
+	case CharacterSet::Turkish:
 		return kCFStringEncodingWindowsLatin5;
-	case SC_CHARSET_JOHAB:
+	case CharacterSet::Johab:
 		return kCFStringEncodingWindowsKoreanJohab;
-	case SC_CHARSET_HEBREW:
+	case CharacterSet::Hebrew:
 		return kCFStringEncodingWindowsHebrew;
-	case SC_CHARSET_ARABIC:
+	case CharacterSet::Arabic:
 		return kCFStringEncodingWindowsArabic;
-	case SC_CHARSET_VIETNAMESE:
+	case CharacterSet::Vietnamese:
 		return kCFStringEncodingWindowsVietnamese;
-	case SC_CHARSET_THAI:
+	case CharacterSet::Thai:
 		return kCFStringEncodingISOLatinThai;
-	case SC_CHARSET_8859_15:
+	case CharacterSet::Iso8859_15:
 		return kCFStringEncodingISOLatin1;
 	default:
 		return notSupported;
@@ -1252,7 +1257,7 @@ CFStringEncoding EncodingFromCharacterSet(bool unicode, int characterSet) {
 }
 
 void SurfaceImpl::DrawTextTransparent(PRectangle rc, const Font *font_, XYPOSITION ybase, std::string_view text,
-				      ColourAlpha fore) {
+				      ColourRGBA fore) {
 	QuartzTextStyle *style = TextStyleFromFont(font_);
 	if (!style) {
 		return;
@@ -1351,7 +1356,7 @@ XYPOSITION SurfaceImpl::WidthText(const Font *font_, std::string_view text) {
 //--------------------------------------------------------------------------------------------------
 
 void SurfaceImpl::DrawTextNoClipUTF8(PRectangle rc, const Font *font_, XYPOSITION ybase, std::string_view text,
-				 ColourAlpha fore, ColourAlpha back) {
+				 ColourRGBA fore, ColourRGBA back) {
 	FillRectangleAligned(rc, back);
 	DrawTextTransparentUTF8(rc, font_, ybase, text, fore);
 }
@@ -1359,7 +1364,7 @@ void SurfaceImpl::DrawTextNoClipUTF8(PRectangle rc, const Font *font_, XYPOSITIO
 //--------------------------------------------------------------------------------------------------
 
 void SurfaceImpl::DrawTextClippedUTF8(PRectangle rc, const Font *font_, XYPOSITION ybase, std::string_view text,
-				  ColourAlpha fore, ColourAlpha back) {
+				  ColourRGBA fore, ColourRGBA back) {
 	CGContextSaveGState(gc);
 	CGContextClipToRect(gc, PRectangleToCGRect(rc));
 	DrawTextNoClipUTF8(rc, font_, ybase, text, fore, back);
@@ -1369,7 +1374,7 @@ void SurfaceImpl::DrawTextClippedUTF8(PRectangle rc, const Font *font_, XYPOSITI
 //--------------------------------------------------------------------------------------------------
 
 void SurfaceImpl::DrawTextTransparentUTF8(PRectangle rc, const Font *font_, XYPOSITION ybase, std::string_view text,
-				      ColourAlpha fore) {
+				      ColourRGBA fore) {
 	QuartzTextStyle *style = TextStyleFromFont(font_);
 	if (!style) {
 		return;
@@ -1507,7 +1512,7 @@ void SurfaceImpl::FlushCachedState() {
 void SurfaceImpl::FlushDrawing() {
 }
 
-std::unique_ptr<Surface> Surface::Allocate(int) {
+std::unique_ptr<Surface> Surface::Allocate(Technology) {
 	return std::make_unique<SurfaceImpl>();
 }
 
@@ -1711,7 +1716,7 @@ static NSImage *ImageFromXPM(XPM *pxpm) {
 		const int width = pxpm->GetWidth();
 		const int height = pxpm->GetHeight();
 		PRectangle rcxpm(0, 0, width, height);
-		std::unique_ptr<Surface> surfaceBase(Surface::Allocate(SC_TECHNOLOGY_DEFAULT));
+		std::unique_ptr<Surface> surfaceBase(Surface::Allocate(Technology::Default));
 		std::unique_ptr<Surface> surfaceXPM = surfaceBase->AllocatePixMap(width, height);
 		SurfaceImpl *surfaceIXPM = static_cast<SurfaceImpl *>(surfaceXPM.get());
 		CGContextClearRect(surfaceIXPM->GetContext(), CGRectMake(0, 0, width, height));
@@ -1911,7 +1916,7 @@ public:
 
 	// ListBox methods
 	void SetFont(const Font *font_) override;
-	void Create(Window &parent, int ctrlID, Scintilla::Point pt, int lineHeight_, bool unicodeMode_, int technology_) override;
+	void Create(Window &parent, int ctrlID, Scintilla::Internal::Point pt, int lineHeight_, bool unicodeMode_, Technology technology_) override;
 	void SetAverageCharWidth(int width) override;
 	void SetVisibleRows(int rows) override;
 	int GetVisibleRows() const override;
@@ -1944,8 +1949,8 @@ public:
 	void SelectionChange() override;
 };
 
-void ListBoxImpl::Create(Window & /*parent*/, int /*ctrlID*/, Scintilla::Point pt,
-			 int lineHeight_, bool unicodeMode_, int) {
+void ListBoxImpl::Create(Window & /*parent*/, int /*ctrlID*/, Scintilla::Internal::Point pt,
+			 int lineHeight_, bool unicodeMode_, Technology) {
 	lineHeight = lineHeight_;
 	unicodeMode = unicodeMode_;
 	maxWidth = 2000;
@@ -1986,6 +1991,11 @@ void ListBoxImpl::Create(Window & /*parent*/, int /*ctrlID*/, Scintilla::Point p
 	table.target = ds;
 	table.doubleAction = @selector(doubleClick:);
 	table.selectionHighlightStyle = NSTableViewSelectionHighlightStyleSourceList;
+
+	if (@available(macOS 11.0, *)) {
+		[table setStyle: NSTableViewStylePlain];
+	}
+
 	wid = (__bridge_retained WindowID)winLB;
 }
 
@@ -2016,8 +2026,13 @@ PRectangle ListBoxImpl::GetDesiredRect() {
 	PRectangle rcDesired;
 	rcDesired = GetPosition();
 
-	// There appears to be an extra pixel above and below the row contents
-	CGFloat itemHeight = table.rowHeight + 2;
+	CGFloat itemHeight;
+	if (@available(macOS 11.0, *)) {
+		itemHeight = table.rowHeight;
+	} else {
+		// There appears to be an extra pixel above and below the row contents
+		itemHeight = table.rowHeight + 2;
+	}
 
 	int rows = Length();
 	if ((rows == 0) || (rows > desiredVisibleRows))
@@ -2026,13 +2041,6 @@ PRectangle ListBoxImpl::GetDesiredRect() {
 	rcDesired.bottom = rcDesired.top + static_cast<XYPOSITION>(itemHeight * rows);
 	rcDesired.right = rcDesired.left + maxItemWidth + aveCharWidth;
 	rcDesired.right += 4; // Ensures no truncation of text
-
-	if (@available(macOS 11, *)) {
-		// macOS 11 requires some extra space possibly due to the rounded highlight.
-		// There may be a better way to discover how much space is required
-		// but an extra 22 pixels fixes it for almost all tested cases.
-		rcDesired.right += 22;
-	}
 
 	if (Length() > rows) {
 		[scroller setHasVerticalScroller: YES];
@@ -2074,7 +2082,7 @@ void ListBoxImpl::Append(char *s, int type) {
 	int count = Length();
 	ld.Add(count, type, s);
 
-	Scintilla::SurfaceImpl surface;
+	Scintilla::Internal::SurfaceImpl surface;
 	XYPOSITION width = surface.WidthText(font.get(), s);
 	if (width > maxItemWidth) {
 		maxItemWidth = width;
@@ -2249,7 +2257,7 @@ NSMenu
 
 //--------------------------------------------------------------------------------------------------
 
-- (void) setOwner: (Scintilla::ScintillaCocoa *) newOwner {
+- (void) setOwner: (Scintilla::Internal::ScintillaCocoa *) newOwner {
 	owner = newOwner;
 }
 
@@ -2284,14 +2292,14 @@ void Menu::Show(Point, const Window &) {
 
 //----------------- Platform -----------------------------------------------------------------------
 
-ColourDesired Platform::Chrome() {
-	return ColourDesired(0xE0, 0xE0, 0xE0);
+ColourRGBA Platform::Chrome() {
+	return ColourRGBA(0xE0, 0xE0, 0xE0);
 }
 
 //--------------------------------------------------------------------------------------------------
 
-ColourDesired Platform::ChromeHighlight() {
-	return ColourDesired(0xFF, 0xFF, 0xFF);
+ColourRGBA Platform::ChromeHighlight() {
+	return ColourRGBA(0xFF, 0xFF, 0xFF);
 }
 
 //--------------------------------------------------------------------------------------------------

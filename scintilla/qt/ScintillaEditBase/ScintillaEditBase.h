@@ -6,7 +6,7 @@
 // Author: Jason Haslam
 //
 // Additions Copyright (c) 2011 Archaeopteryx Software, Inc. d/b/a Wingware
-// ScintillaWidget.h - Qt widget that wraps ScintillaQt and provides events and scrolling
+// @file ScintillaEditBase.h - Qt widget that wraps ScintillaQt and provides events and scrolling
 
 
 #ifndef SCINTILLAEDITBASE_H
@@ -21,6 +21,9 @@
 
 #include "Debugging.h"
 #include "Geometry.h"
+#include "ScintillaTypes.h"
+#include "ScintillaMessages.h"
+#include "ScintillaStructures.h"
 #include "Platform.h"
 #include "Scintilla.h"
 
@@ -28,7 +31,7 @@
 #include <QMimeData>
 #include <QElapsedTimer>
 
-namespace Scintilla {
+namespace Scintilla::Internal {
 
 class ScintillaQt;
 class SurfaceImpl;
@@ -146,7 +149,7 @@ protected:
 	void scrollContentsBy(int, int) override {}
 
 private:
-	Scintilla::ScintillaQt *sqt;
+	Scintilla::Internal::ScintillaQt *sqt;
 
 	QElapsedTimer time;
 
@@ -158,7 +161,7 @@ private:
 	static bool IsHangul(const QChar qchar);
 	void MoveImeCarets(int offset);
 	void DrawImeIndicator(int indicator, int len);
-	int ModifiersOfKeyboard() const;
+	Scintilla::KeyMod ModifiersOfKeyboard() const;
 };
 
 #endif /* SCINTILLAEDITBASE_H */
