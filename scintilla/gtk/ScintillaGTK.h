@@ -12,6 +12,15 @@ class ScintillaGTKAccessible;
 
 #define OBJECT_CLASS GObjectClass
 
+struct FontOptions {
+	cairo_antialias_t antialias {};
+	cairo_subpixel_order_t order {};
+	cairo_hint_style_t hint {};
+	FontOptions() noexcept = default;
+	explicit FontOptions(GtkWidget *widget) noexcept;
+	bool operator==(const FontOptions &other) const noexcept;
+};
+
 class ScintillaGTK : public ScintillaBase {
 	friend class ScintillaGTKAccessible;
 
@@ -69,6 +78,7 @@ class ScintillaGTK : public ScintillaBase {
 	bool repaintFullWindow;
 
 	guint styleIdleID;
+	FontOptions fontOptionsPrevious;
 	int accessibilityEnabled;
 	AtkObject *accessible;
 
@@ -92,6 +102,8 @@ private:
 	Sci::Position TargetAsUTF8(char *text) const;
 	Sci::Position EncodedFromUTF8(const char *utf8, char *encoded) const;
 	bool ValidCodePage(int codePage) const override;
+	std::string UTF8FromEncoded(std::string_view encoded) const override;
+	std::string EncodedFromUTF8(std::string_view utf8) const override;
 public: 	// Public for scintilla_send_message
 	sptr_t WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lParam) override;
 private:
@@ -100,9 +112,9 @@ private:
 		TickReason reason;
 		ScintillaGTK *scintilla;
 		guint timer;
-		TimeThunk() noexcept : reason(tickCaret), scintilla(nullptr), timer(0) {}
+		TimeThunk() noexcept : reason(TickReason::caret), scintilla(nullptr), timer(0) {}
 	};
-	TimeThunk timers[tickDwell+1];
+	TimeThunk timers[static_cast<size_t>(TickReason::dwell)+1];
 	bool FineTickerRunning(TickReason reason) override;
 	void FineTickerStart(TickReason reason, int millis, int tolerance) override;
 	void FineTickerCancel(TickReason reason) override;
@@ -123,8 +135,8 @@ private:
 	void NotifyKey(int key, int modifiers);
 	void NotifyURIDropped(const char *list);
 	const char *CharacterSetID() const;
-	CaseFolder *CaseFolderForEncoding() override;
-	std::string CaseMapString(const std::string &s, int caseMapping) override;
+	std::unique_ptr<CaseFolder> CaseFolderForEncoding() override;
+	std::string CaseMapString(const std::string &s, CaseMapping caseMapping) override;
 	int KeyDefault(int key, int modifiers) override;
 	void CopyToClipboard(const SelectionText &selectedText) override;
 	void Copy() override;
@@ -172,6 +184,7 @@ private:
 	static void GetPreferredHeight(GtkWidget *widget, gint *minimalHeight, gint *naturalHeight);
 #endif
 	static void SizeAllocate(GtkWidget *widget, GtkAllocation *allocation);
+	void CheckForFontOptionChange();
 #if GTK_CHECK_VERSION(3,0,0)
 	gboolean DrawTextThis(cairo_t *cr);
 	static gboolean DrawText(GtkWidget *widget, cairo_t *cr, ScintillaGTK *sciThis);
@@ -241,7 +254,7 @@ private:
 	static gboolean IdleCallback(gpointer pSci);
 	static gboolean StyleIdle(gpointer pSci);
 	void IdleWork() override;
-	void QueueIdleWork(WorkNeeded::workItems items, Sci::Position upTo) override;
+	void QueueIdleWork(WorkItems items, Sci::Position upTo) override;
 	void SetDocPointer(Document *document) override;
 	static void PopUpCB(GtkMenuItem *menuItem, ScintillaGTK *sciThis);
 

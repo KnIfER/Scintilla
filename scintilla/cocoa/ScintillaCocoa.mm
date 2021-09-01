@@ -18,6 +18,7 @@
 
 #include <string_view>
 #include <vector>
+#include <optional>
 
 #import <Cocoa/Cocoa.h>
 #if MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5
@@ -26,6 +27,8 @@
 #import <QuartzCore/CAAnimation.h>
 #import <QuartzCore/CATransaction.h>
 
+#import "Debugging.h"
+#import "Geometry.h"
 #import "Platform.h"
 #import "ScintillaView.h"
 #import "ScintillaCocoa.h"
@@ -404,10 +407,8 @@ ScintillaCocoa::ScintillaCocoa(ScintillaView *sciView_, SCIContentView *viewCont
 	scrollTicks = 2000;
 	observer = NULL;
 	layerFindIndicator = NULL;
-	imeInteraction = imeInline;
-	for (TickReason tr=tickCaret; tr<=tickPlatform; tr = static_cast<TickReason>(tr+1)) {
-		timers[tr] = nil;
-	}
+	imeInteraction = IMEInteraction::internal;
+	std::fill(timers, std::end(timers), nil);
 	Init();
 }
 
@@ -443,8 +444,8 @@ void ScintillaCocoa::Init() {
  */
 void ScintillaCocoa::Finalise() {
 	ObserverRemove();
-	for (TickReason tr=tickCaret; tr<=tickPlatform; tr = static_cast<TickReason>(tr+1)) {
-		FineTickerCancel(tr);
+	for (size_t tr=static_cast<size_t>(TickReason::caret); tr<=static_cast<size_t>(TickReason::platform); tr++) {
+		FineTickerCancel(static_cast<TickReason>(tr));
 	}
 	ScintillaBase::Finalise();
 }
@@ -501,7 +502,7 @@ void ScintillaCocoa::IdleWork() {
 
 //--------------------------------------------------------------------------------------------------
 
-void ScintillaCocoa::QueueIdleWork(WorkNeeded::workItems items, Sci::Position upTo) {
+void ScintillaCocoa::QueueIdleWork(WorkItems items, Sci::Position upTo) {
 	Editor::QueueIdleWork(items, upTo);
 	ObserverAdd();
 }
@@ -582,14 +583,14 @@ public:
 	}
 };
 
-CaseFolder *ScintillaCocoa::CaseFolderForEncoding() {
+std::unique_ptr<CaseFolder> ScintillaCocoa::CaseFolderForEncoding() {
 	if (pdoc->dbcsCodePage == SC_CP_UTF8) {
-		return new CaseFolderUnicode();
+		return std::make_unique<CaseFolderUnicode>();
 	} else {
 		CFStringEncoding encoding = EncodingFromCharacterSet(IsUnicodeMode(),
 					    vs.styles[STYLE_DEFAULT].characterSet);
 		if (pdoc->dbcsCodePage == 0) {
-			CaseFolderTable *pcf = new CaseFolderTable();
+			std::unique_ptr<CaseFolderTable> pcf = std::make_unique<CaseFolderTable>();
 			pcf->StandardASCII();
 			// Only for single byte encodings
 			for (int i=0x80; i<0x100; i++) {
@@ -612,7 +613,7 @@ CaseFolder *ScintillaCocoa::CaseFolderForEncoding() {
 			}
 			return pcf;
 		} else {
-			return new CaseFolderDBCS(encoding);
+			return std::make_unique<CaseFolderDBCS>(encoding);
 		}
 	}
 }
@@ -623,14 +624,14 @@ CaseFolder *ScintillaCocoa::CaseFolderForEncoding() {
 /**
  * Case-fold the given string depending on the specified case mapping type.
  */
-std::string ScintillaCocoa::CaseMapString(const std::string &s, int caseMapping) {
-	if ((s.size() == 0) || (caseMapping == cmSame))
+std::string ScintillaCocoa::CaseMapString(const std::string &s, CaseMapping caseMapping) {
+	if ((s.size() == 0) || (caseMapping == CaseMapping::same))
 		return s;
 
 	if (IsUnicodeMode()) {
 		std::string retMapped(s.length() * maxExpansionCaseConversion, 0);
 		size_t lenMapped = CaseConvertString(&retMapped[0], retMapped.length(), s.c_str(), s.length(),
-						     (caseMapping == cmUpper) ? CaseConversionUpper : CaseConversionLower);
+						     (caseMapping == CaseMapping::upper) ? CaseConversion::upper : CaseConversion::lower);
 		retMapped.resize(lenMapped);
 		return retMapped;
 	}
@@ -645,10 +646,10 @@ std::string ScintillaCocoa::CaseMapString(const std::string &s, int caseMapping)
 
 	NSString *sMapped;
 	switch (caseMapping) {
-	case cmUpper:
+	case CaseMapping::upper:
 		sMapped = ((__bridge NSString *)cfsVal).uppercaseString;
 		break;
-	case cmLower:
+	case CaseMapping::lower:
 		sMapped = ((__bridge NSString *)cfsVal).lowercaseString;
 		break;
 	default:
@@ -846,7 +847,7 @@ sptr_t ScintillaCocoa::WndProc(unsigned int iMessage, uptr_t wParam, sptr_t lPar
 		case SCI_SETBIDIRECTIONAL:
 			bidirectional = static_cast<EditModel::Bidirectional>(wParam);
 			// Invalidate all cached information including layout.
-			DropGraphics(true);
+			DropGraphics();
 			InvalidateStyleRedraw();
 			return 0;
 
@@ -924,7 +925,7 @@ sptr_t ScintillaCocoa::DefWndProc(unsigned int, uptr_t, sptr_t) {
  * Handle any ScintillaCocoa-specific ticking or call superclass.
  */
 void ScintillaCocoa::TickFor(TickReason reason) {
-	if (reason == tickPlatform) {
+	if (reason == TickReason::platform) {
 		DragScroll();
 	} else {
 		Editor::TickFor(reason);
@@ -937,7 +938,7 @@ void ScintillaCocoa::TickFor(TickReason reason) {
  * Is a particular timer currently running?
  */
 bool ScintillaCocoa::FineTickerRunning(TickReason reason) {
-	return timers[reason] != nil;
+	return timers[static_cast<size_t>(reason)] != nil;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -955,7 +956,7 @@ void ScintillaCocoa::FineTickerStart(TickReason reason, int millis, int toleranc
 	if (tolerance && [fineTimer respondsToSelector: @selector(setTolerance:)]) {
 		fineTimer.tolerance = tolerance / 1000.0;
 	}
-	timers[reason] = fineTimer;
+	timers[static_cast<size_t>(reason)] = fineTimer;
 	[NSRunLoop.currentRunLoop addTimer: fineTimer forMode: NSDefaultRunLoopMode];
 	[NSRunLoop.currentRunLoop addTimer: fineTimer forMode: NSModalPanelRunLoopMode];
 }
@@ -966,9 +967,10 @@ void ScintillaCocoa::FineTickerStart(TickReason reason, int millis, int toleranc
  * Cancel a fine-grained timer.
  */
 void ScintillaCocoa::FineTickerCancel(TickReason reason) {
-	if (timers[reason]) {
-		[timers[reason] invalidate];
-		timers[reason] = nil;
+	const size_t reasonIndex = static_cast<size_t>(reason);
+	if (timers[reasonIndex]) {
+		[timers[reasonIndex] invalidate];
+		timers[reasonIndex] = nil;
 	}
 }
 
@@ -1043,7 +1045,7 @@ void ScintillaCocoa::Paste(bool forceRectangular) {
 	pdoc->BeginUndoAction();
 	ClearSelection(false);
 	InsertPasteShape(selectedText.Data(), selectedText.Length(),
-			 selectedText.rectangular ? pasteRectangular : pasteStream);
+			 selectedText.rectangular ? PasteShape::rectangular : PasteShape::stream);
 	pdoc->EndUndoAction();
 
 	Redraw();
@@ -1056,8 +1058,7 @@ void ScintillaCocoa::CTPaint(void *gc, NSRect rc) {
 #pragma unused(rc)
 	std::unique_ptr<Surface> surfaceWindow(Surface::Allocate(SC_TECHNOLOGY_DEFAULT));
 	surfaceWindow->Init(gc, wMain.GetID());
-	surfaceWindow->SetUnicodeMode(SC_CP_UTF8 == ct.codePage);
-	surfaceWindow->SetDBCSMode(ct.codePage);
+	surfaceWindow->SetMode(SurfaceMode(ct.codePage, BidirectionalR2L()));
 	ct.PaintCT(surfaceWindow.get());
 	surfaceWindow->Release();
 }
@@ -1192,6 +1193,38 @@ NSPoint ScintillaCocoa::GetCaretPosition() {
 
 // -------------------------------------------------------------------------------------------------
 
+std::string ScintillaCocoa::UTF8FromEncoded(std::string_view encoded) const {
+	if (IsUnicodeMode()) {
+		return std::string(encoded);
+	} else {
+		CFStringEncoding encoding = EncodingFromCharacterSet(IsUnicodeMode(),
+					    vs.styles[STYLE_DEFAULT].characterSet);
+		CFStringRef cfsVal = CFStringFromString(encoded.data(), encoded.length(), encoding);
+		std::string utf = EncodedBytesString(cfsVal, kCFStringEncodingUTF8);
+		if (cfsVal)
+			CFRelease(cfsVal);
+		return utf;
+	}
+}
+
+// -------------------------------------------------------------------------------------------------
+
+std::string ScintillaCocoa::EncodedFromUTF8(std::string_view utf8) const {
+	if (IsUnicodeMode()) {
+		return std::string(utf8);
+	} else {
+		CFStringEncoding encoding = EncodingFromCharacterSet(IsUnicodeMode(),
+					    vs.styles[STYLE_DEFAULT].characterSet);
+		CFStringRef cfsVal = CFStringFromString(utf8.data(), utf8.length(), kCFStringEncodingUTF8);
+		const std::string sEncoded = EncodedBytesString(cfsVal, encoding);
+		if (cfsVal)
+			CFRelease(cfsVal);
+		return sEncoded;
+	}
+}
+
+// -------------------------------------------------------------------------------------------------
+
 #pragma mark Drag
 
 /**
@@ -1290,9 +1323,9 @@ void ScintillaCocoa::StartDrag() {
 	if (sel.Empty())
 		return;
 
-	inDragDrop = ddDragging;
+	inDragDrop = DragDrop::dragging;
 
-	FineTickerStart(tickPlatform, timer.tickSize, 0);
+	FineTickerStart(TickReason::platform, timer.tickSize, 0);
 
 	// Put the data to be dragged on the drag pasteboard.
 	SelectionText selectedText;
@@ -1378,37 +1411,35 @@ void ScintillaCocoa::StartDrag() {
 	SCIContentView *content = ContentView();
 
 	// To get a bitmap of the text we're dragging, we just use Paint on a pixmap surface.
-	SurfaceImpl sw;
-	sw.InitPixMap(static_cast<int>(client.Width()), static_cast<int>(client.Height()), NULL, NULL);
+	SurfaceImpl si;
+	si.SetMode(SurfaceMode(CodePage(), BidirectionalR2L()));
+	std::unique_ptr<SurfaceImpl> sw = si.AllocatePixMapImplementation(static_cast<int>(client.Width()), static_cast<int>(client.Height()));
 
 	const bool lastHideSelection = view.hideSelection;
 	view.hideSelection = true;
 	PRectangle imageRect = rcSel;
-	paintState = painting;
+	paintState = PaintState::painting;
 	paintingAllText = true;
-	CGContextRef gcsw = sw.GetContext();
+	CGContextRef gcsw = sw->GetContext();
 	CGContextTranslateCTM(gcsw, -client.left, -client.top);
-	Paint(&sw, client);
-	paintState = notPainting;
+	Paint(sw.get(), client);
+	paintState = PaintState::notPainting;
 	view.hideSelection = lastHideSelection;
 
-	SurfaceImpl pixmap;
-	pixmap.InitPixMap(static_cast<int>(imageRect.Width()), static_cast<int>(imageRect.Height()), NULL, NULL);
-	pixmap.SetUnicodeMode(IsUnicodeMode());
-	pixmap.SetDBCSMode(CodePage());
-
-	CGContextRef gc = pixmap.GetContext();
+	std::unique_ptr<SurfaceImpl> pixmap = si.AllocatePixMapImplementation(static_cast<int>(imageRect.Width()),
+								  static_cast<int>(imageRect.Height()));
+	CGContextRef gc = pixmap->GetContext();
 	// To make Paint() work on a bitmap, we have to flip our coordinates and translate the origin
 	CGContextTranslateCTM(gc, 0, imageRect.Height());
 	CGContextScaleCTM(gc, 1.0, -1.0);
 
-	pixmap.CopyImageRectangle(sw, imageRect, PRectangle(0.0f, 0.0f, imageRect.Width(), imageRect.Height()));
+	pixmap->CopyImageRectangle(sw.get(), imageRect, PRectangle(0.0f, 0.0f, imageRect.Width(), imageRect.Height()));
 	// XXX TODO: overwrite any part of the image that is not part of the
 	//           selection to make it transparent.  right now we just use
 	//           the full rectangle which may include non-selected text.
 
 	NSBitmapImageRep *bitmap = NULL;
-	CGImageRef imagePixmap = pixmap.CreateImage();
+	CGImageRef imagePixmap = pixmap->CreateImage();
 	if (imagePixmap)
 		bitmap = [[NSBitmapImageRep alloc] initWithCGImage: imagePixmap];
 	CGImageRelease(imagePixmap);
@@ -1453,7 +1484,7 @@ void ScintillaCocoa::StartDrag() {
  * Called when a drag operation reaches the control which was initiated outside.
  */
 NSDragOperation ScintillaCocoa::DraggingEntered(id <NSDraggingInfo> info) {
-	FineTickerStart(tickPlatform, timer.tickSize, 0);
+	FineTickerStart(TickReason::platform, timer.tickSize, 0);
 	return DraggingUpdated(info);
 }
 
@@ -1494,8 +1525,8 @@ NSDragOperation ScintillaCocoa::DraggingUpdated(id <NSDraggingInfo> info) {
 void ScintillaCocoa::DraggingExited(id <NSDraggingInfo> info) {
 #pragma unused(info)
 	SetDragPosition(SelectionPosition(Sci::invalidPosition));
-	FineTickerCancel(tickPlatform);
-	inDragDrop = ddNone;
+	FineTickerCancel(TickReason::platform);
+	inDragDrop = DragDrop::none;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1668,8 +1699,7 @@ NSRect ScintillaCocoa::FrameForRange(NSRange rangeCharacters) {
 				     (pdoc->GetColumn(rangeEnd) == 0);
 
 	Point ptStart = LocationFromPosition(posRange.location);
-	const PointEnd peEndRange = static_cast<PointEnd>(peSubLineEnd|peLineEnd);
-	Point ptEnd = LocationFromPosition(rangeEnd, peEndRange);
+	Point ptEnd = LocationFromPosition(rangeEnd, PointEnd::endEither);
 
 	NSRect rect = NSMakeRect(ptStart.x, ptStart.y,
 				 ptEnd.x - ptStart.x,
@@ -1738,7 +1768,7 @@ bool ScintillaCocoa::HaveMouseCapture() {
  * Synchronously paint a rectangle of the window.
  */
 bool ScintillaCocoa::SyncPaint(void *gc, PRectangle rc) {
-	paintState = painting;
+	paintState = PaintState::painting;
 	rcPaint = rc;
 	PRectangle rcText = GetTextRectangle();
 	paintingAllText = rcPaint.Contains(rcText);
@@ -1752,9 +1782,9 @@ bool ScintillaCocoa::SyncPaint(void *gc, PRectangle rc) {
 			vs.extraFontFlag == SC_EFF_QUALITY_LCD_OPTIMIZED);
 	sw->Init(gc, wMain.GetID());
 	Paint(sw.get(), rc);
-	const bool succeeded = paintState != paintAbandoned;
+	const bool succeeded = paintState != PaintState::abandoned;
 	sw->Release();
-	paintState = notPainting;
+	paintState = PaintState::notPainting;
 	if (!succeeded) {
 		NSView *marginView = (__bridge NSView *)(wMargin.GetID());
 		[marginView setNeedsDisplay: YES];
@@ -2035,9 +2065,9 @@ bool ScintillaCocoa::CanRedo() {
 //--------------------------------------------------------------------------------------------------
 
 void ScintillaCocoa::TimerFired(NSTimer *timer) {
-	for (TickReason tr=tickCaret; tr<=tickPlatform; tr = static_cast<TickReason>(tr+1)) {
+	for (size_t tr=static_cast<size_t>(TickReason::caret); tr<=static_cast<size_t>(TickReason::platform); tr++) {
 		if (timers[tr] == timer) {
-			TickFor(tr);
+			TickFor(static_cast<TickReason>(tr));
 		}
 	}
 }
@@ -2469,7 +2499,7 @@ void ScintillaCocoa::ActiveStateChanged(bool isActive) {
 	if (!isActive) {
 		DropCaret();
 		//SetFocusState( false );
-		FineTickerCancel(tickCaret);
+		FineTickerCancel(TickReason::caret);
 	} else {
 		ShowCaretAtCurrentPosition();
 	}

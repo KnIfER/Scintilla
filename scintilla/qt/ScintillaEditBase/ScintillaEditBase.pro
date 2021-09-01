@@ -12,7 +12,7 @@ TEMPLATE = lib
 CONFIG += lib_bundle
 CONFIG += c++1z
 
-VERSION = 5.0.0
+VERSION = 5.0.1
 
 SOURCES += \
     PlatQt.cpp \
@@ -33,6 +33,7 @@ SOURCES += \
     ../../src/LineMarker.cxx \
     ../../src/KeyMap.cxx \
     ../../src/Indicator.cxx \
+    ../../src/Geometry.cxx \
     ../../src/EditView.cxx \
     ../../src/Editor.cxx \
     ../../src/EditModel.cxx \
@@ -63,11 +64,13 @@ HEADERS  += \
     ../../src/RunStyles.h \
     ../../src/RESearch.h \
     ../../src/PositionCache.h \
+    ../../src/Platform.h \
     ../../src/PerLine.h \
     ../../src/Partitioning.h \
     ../../src/LineMarker.h \
     ../../src/KeyMap.h \
     ../../src/Indicator.h \
+    ../../src/Geometry.h \
     ../../src/FontQuality.h \
     ../../src/Editor.h \
     ../../src/Document.h \
@@ -82,7 +85,6 @@ HEADERS  += \
     ../../src/CallTip.h \
     ../../src/AutoComplete.h \
     ../../include/Scintilla.h \
-    ../../include/Platform.h \
     ../../include/ILexer.h
 
 OTHER_FILES +=

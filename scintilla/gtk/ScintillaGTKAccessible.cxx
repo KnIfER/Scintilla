@@ -62,6 +62,8 @@
 #include <string_view>
 #include <vector>
 #include <map>
+#include <set>
+#include <optional>
 #include <algorithm>
 #include <memory>
 
@@ -87,6 +89,8 @@
 #endif
 
 // ScintillaGTK.h and stuff it needs
+#include "Debugging.h"
+#include "Geometry.h"
 #include "Platform.h"
 
 #include "ILoader.h"

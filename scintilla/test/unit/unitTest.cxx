@@ -36,9 +36,10 @@
 
 #include <string_view>
 #include <vector>
+#include <optional>
 #include <memory>
 
-#include "Platform.h"
+#include "Debugging.h"
 
 #if defined(__GNUC__)
 // Want to avoid misleading indentation warnings in catch.hpp but the pragma
@@ -57,12 +58,12 @@ using namespace Scintilla;
 
 // Needed for PLATFORM_ASSERT in code being tested
 
-void Platform::Assert(const char *c, const char *file, int line) {
+void Platform::Assert(const char *c, const char *file, int line) noexcept {
 	fprintf(stderr, "Assertion [%s] failed at %s %d\n", c, file, line);
 	abort();
 }
 
-void Platform::DebugPrintf(const char *format, ...) {
+void Platform::DebugPrintf(const char *format, ...) noexcept {
 	char buffer[2000];
 	va_list pArguments;
 	va_start(pArguments, format);

@@ -10,9 +10,10 @@
 
 #include <string_view>
 #include <vector>
+#include <optional>
 #include <memory>
 
-#include "Platform.h"
+#include "Debugging.h"
 
 #define CATCH_CONFIG_WINDOWS_CRTDBG
 #define CATCH_CONFIG_RUNNER

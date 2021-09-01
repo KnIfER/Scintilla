@@ -24,10 +24,14 @@
 #include <string_view>
 #include <vector>
 #include <map>
+#include <set>
+#include <optional>
 #include <algorithm>
 #include <memory>
 
 #include "Scintilla.h"
+#include "Debugging.h"
+#include "Geometry.h"
 #include "Platform.h"
 #include "ILoader.h"
 #include "ILexer.h"
@@ -101,6 +105,8 @@ private:
 	void Finalise() override;
 	bool DragThreshold(Point ptStart, Point ptNow) override;
 	bool ValidCodePage(int codePage) const override;
+	std::string UTF8FromEncoded(std::string_view encoded) const override;
+	std::string EncodedFromUTF8(std::string_view utf8) const override;
 
 private:
 	void ScrollText(Sci::Line linesToMove) override;
@@ -118,7 +124,7 @@ private:
 	void NotifyFocus(bool focus) override;
 	void NotifyParent(SCNotification scn) override;
 	void NotifyURIDropped(const char *uri);
-	int timers[tickDwell+1];
+	int timers[static_cast<size_t>(TickReason::dwell)+1];
 	bool FineTickerRunning(TickReason reason) override;
 	void FineTickerStart(TickReason reason, int millis, int tolerance) override;
 	void CancelTimers();
@@ -132,8 +138,8 @@ private:
 	const char *CharacterSetIDOfDocument() const;
 	QString StringFromDocument(const char *s) const;
 	QByteArray BytesForDocument(const QString &text) const;
-	CaseFolder *CaseFolderForEncoding() override;
-	std::string CaseMapString(const std::string &s, int caseMapping) override;
+	std::unique_ptr<CaseFolder> CaseFolderForEncoding() override;
+	std::string CaseMapString(const std::string &s, CaseMapping caseMapping) override;
 
 	void CreateCallTipWindow(PRectangle rc) override;
 	void AddToPopUp(const char *label, int cmd = 0, bool enabled = true) override;

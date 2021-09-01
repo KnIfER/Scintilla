@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 #include <memory>
 
 #include "ILoader.h"
@@ -120,8 +121,8 @@ protected:
 	void Redraw() override;
 
 	void Init();
-	CaseFolder *CaseFolderForEncoding() override;
-	std::string CaseMapString(const std::string &s, int caseMapping) override;
+	std::unique_ptr<CaseFolder> CaseFolderForEncoding() override;
+	std::string CaseMapString(const std::string &s, CaseMapping caseMapping) override;
 	void CancelModes() override;
 
 public:
@@ -182,16 +183,19 @@ public:
 
 	NSPoint GetCaretPosition();
 
+	std::string UTF8FromEncoded(std::string_view encoded) const override;
+	std::string EncodedFromUTF8(std::string_view utf8) const override;
+
 	static sptr_t DirectFunction(sptr_t ptr, unsigned int iMessage, uptr_t wParam, sptr_t lParam);
 
-	NSTimer *timers[tickPlatform+1];
+	NSTimer *timers[static_cast<size_t>(TickReason::platform)+1];
 	void TimerFired(NSTimer *timer);
 	void IdleTimerFired();
 	static void UpdateObserver(CFRunLoopObserverRef observer, CFRunLoopActivity activity, void *sci);
 	void ObserverAdd();
 	void ObserverRemove();
 	void IdleWork() override;
-	void QueueIdleWork(WorkNeeded::workItems items, Sci::Position upTo) override;
+	void QueueIdleWork(WorkItems items, Sci::Position upTo) override;
 	ptrdiff_t InsertText(NSString *input, CharacterSource charSource);
 	NSRange PositionsFromCharacters(NSRange rangeCharacters) const;
 	NSRange CharactersFromPositions(NSRange rangePositions) const;

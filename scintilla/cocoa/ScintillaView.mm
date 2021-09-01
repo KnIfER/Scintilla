@@ -14,7 +14,10 @@
 
 #include <string_view>
 #include <vector>
+#include <optional>
 
+#import "Debugging.h"
+#import "Geometry.h"
 #import "Platform.h"
 #import "ScintillaView.h"
 #import "ScintillaCocoa.h"
@@ -38,19 +41,19 @@ NSString *const SCIUpdateUINotification = @"SCIUpdateUI";
  */
 static NSCursor *cursorFromEnum(Window::Cursor cursor) {
 	switch (cursor) {
-	case Window::cursorText:
+	case Window::Cursor::text:
 		return [NSCursor IBeamCursor];
-	case Window::cursorArrow:
+	case Window::Cursor::arrow:
 		return [NSCursor arrowCursor];
-	case Window::cursorWait:
+	case Window::Cursor::wait:
 		return waitCursor;
-	case Window::cursorHoriz:
+	case Window::Cursor::horizontal:
 		return [NSCursor resizeLeftRightCursor];
-	case Window::cursorVert:
+	case Window::Cursor::vertical:
 		return [NSCursor resizeUpDownCursor];
-	case Window::cursorReverseArrow:
+	case Window::Cursor::reverseArrow:
 		return reverseArrowCursor;
-	case Window::cursorUp:
+	case Window::Cursor::up:
 	default:
 		return [NSCursor arrowCursor];
 	}
@@ -263,6 +266,8 @@ static NSCursor *cursorFromEnum(Window::Cursor cursor) {
 	super.frame = frame;
 
 	mOwner.backend->Resize();
+
+	[super prepareContentInRect: [self visibleRect]];
 }
 
 //--------------------------------------------------------------------------------------------------
