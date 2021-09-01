@@ -1,0 +1,273 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Manifest Include="SciTE.exe.manifest" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\lexilla\access\LexillaAccess.cxx" />
+    <ClCompile Include="..\src\Cookie.cxx" />
+    <ClCompile Include="..\src\Credits.cxx" />
+    <ClCompile Include="..\src\EditorConfig.cxx" />
+    <ClCompile Include="..\src\ExportHTML.cxx" />
+    <ClCompile Include="..\src\ExportPDF.cxx" />
+    <ClCompile Include="..\src\ExportRTF.cxx" />
+    <ClCompile Include="..\src\ExportTEX.cxx" />
+    <ClCompile Include="..\src\ExportXML.cxx" />
+    <ClCompile Include="..\src\FilePath.cxx" />
+    <ClCompile Include="..\src\FileWorker.cxx" />
+    <ClCompile Include="..\src\IFaceTable.cxx" />
+    <ClCompile Include="..\src\JobQueue.cxx" />
+    <ClCompile Include="..\src\LuaExtension.cxx" />
+    <ClCompile Include="..\src\MatchMarker.cxx" />
+    <ClCompile Include="..\src\MultiplexExtension.cxx" />
+    <ClCompile Include="..\src\PropSetFile.cxx" />
+    <ClCompile Include="..\src\ScintillaWindow.cxx" />
+    <ClCompile Include="..\src\SciTEBuffers.cxx" />
+    <ClCompile Include="..\src\SciTEIO.cxx" />
+    <ClCompile Include="..\src\SciTEProps.cxx" />
+    <ClCompile Include="..\src\StringHelpers.cxx" />
+    <ClCompile Include="..\src\StringList.cxx" />
+    <ClCompile Include="..\src\StyleDefinition.cxx" />
+    <ClCompile Include="..\src\StyleWriter.cxx" />
+    <ClCompile Include="..\src\Utf8_16.cxx" />
+    <ClCompile Include="..\win32\GUIWin.cxx" />
+    <ClCompile Include="..\win32\SciTEWinBar.cxx" />
+    <ClCompile Include="..\win32\SciTEWinDlg.cxx" />
+    <ClCompile Include="..\win32\Strips.cxx" />
+    <ClCompile Include="..\win32\GUIWin.cxx" />
+    <ClCompile Include="..\win32\SciTEWin.cxx" />
+    <ClCompile Include="..\win32\SciTEWinBar.cxx" />
+    <ClCompile Include="..\win32\SciTEWinDlg.cxx" />
+    <ClCompile Include="..\win32\Strips.cxx" />
+    <ClCompile Include="..\win32\UniqueInstance.cxx" />
+    <ClCompile Include="..\win32\GUIWin.cxx" />
+    <ClCompile Include="..\win32\SciTEWinBar.cxx" />
+    <ClCompile Include="..\win32\SciTEWinDlg.cxx" />
+    <ClCompile Include="..\win32\Strips.cxx" />
+    <ClCompile Include="..\win32\*.cxx" />
+    <ClCompile Include="..\win32\*.cxx" />
+    <ClCompile Include="..\win32\*.cxx" />
+    <ClCompile Include="..\win32\GUIWin.cxx" />
+    <ClCompile Include="..\win32\SciTEWin.cxx" />
+    <ClCompile Include="..\win32\SciTEWinBar.cxx" />
+    <ClCompile Include="..\win32\SciTEWinDlg.cxx" />
+    <ClCompile Include="..\win32\Strips.cxx" />
+    <ClCompile Include="..\win32\UniqueInstance.cxx" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\win32\*.cxx">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\scintilla\call\ScintillaCall.cxx" />
+    <ClCompile Include="..\win32\DirectorExtension.cxx" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="UniqueInstance.cxx" />
+    <ClCompile Include="..\src\SciTEBase.cxx">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\win32\SciTEWin.cxx">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\lua\src\*.c" />
+    <ClCompile Include="..\win32\SciTEWin.cxx">
+      <Filter>Core</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\lexilla\include\SciLexer.h" />
+    <ClInclude Include="..\..\lexilla\lexlib\CatalogueModules.h" />
+    <ClInclude Include="..\..\lexilla\lexlib\OptionSet.h" />
+    <ClInclude Include="..\..\lexilla\lexlib\SparseState.h" />
+    <ClInclude Include="..\..\lexilla\lexlib\StringCopy.h" />
+    <ClInclude Include="..\..\lexilla\lexlib\SubStyles.h" />
+    <ClInclude Include="..\..\scintilla\include\ILoader.h" />
+    <ClInclude Include="..\..\scintilla\include\Scintilla.h" />
+    <ClInclude Include="..\..\scintilla\include\ScintillaMessages.h" />
+    <ClInclude Include="..\..\scintilla\include\ScintillaStructures.h" />
+    <ClInclude Include="..\..\scintilla\include\ScintillaTypes.h" />
+    <ClInclude Include="..\..\scintilla\include\ScintillaWidget.h" />
+    <ClInclude Include="..\..\scintilla\include\Sci_Position.h" />
+    <ClInclude Include="..\..\scintilla\include\ILoader.h" />
+    <ClInclude Include="..\..\scintilla\include\Scintilla.h" />
+    <ClInclude Include="..\..\scintilla\include\ScintillaCall.h" />
+    <ClInclude Include="..\..\scintilla\include\ScintillaMessages.h" />
+    <ClInclude Include="..\..\scintilla\include\ScintillaStructures.h" />
+    <ClInclude Include="..\..\scintilla\include\ScintillaTypes.h" />
+    <ClInclude Include="..\..\scintilla\include\ScintillaWidget.h" />
+    <ClInclude Include="..\..\scintilla\include\Sci_Position.h" />
+    <ClInclude Include="..\..\scintilla\include\*.h" />
+    <ClInclude Include="..\..\scintilla\include\ILoader.h" />
+    <ClInclude Include="..\..\scintilla\include\Scintilla.h" />
+    <ClInclude Include="..\..\scintilla\include\ScintillaMessages.h" />
+    <ClInclude Include="..\..\scintilla\include\ScintillaStructures.h" />
+    <ClInclude Include="..\..\scintilla\include\ScintillaTypes.h" />
+    <ClInclude Include="..\..\scintilla\include\ScintillaWidget.h" />
+    <ClInclude Include="..\..\scintilla\include\Sci_Position.h" />
+    <ClInclude Include="..\..\scintilla\include\*.h" />
+    <ClInclude Include="..\..\scintilla\include\*.h" />
+    <ClInclude Include="..\..\scintilla\include\*.h" />
+    <ClInclude Include="..\..\scintilla\include\*.h" />
+    <ClInclude Include="..\..\scintilla\include\*.h" />
+    <ClInclude Include="..\..\scintilla\src\Debugging.h" />
+    <ClInclude Include="..\..\scintilla\src\Partitioning.h" />
+    <ClInclude Include="..\..\scintilla\src\Platform.h" />
+    <ClInclude Include="..\..\scintilla\src\Position.h" />
+    <ClInclude Include="..\..\scintilla\src\SparseVector.h" />
+    <ClInclude Include="..\..\scintilla\src\SplitVector.h" />
+    <ClInclude Include="..\src\Cookie.h" />
+    <ClInclude Include="..\src\EditorConfig.h" />
+    <ClInclude Include="..\src\Extender.h" />
+    <ClInclude Include="..\src\FilePath.h" />
+    <ClInclude Include="..\src\FileWorker.h" />
+    <ClInclude Include="..\src\GUI.h" />
+    <ClInclude Include="..\src\IFaceTable.h" />
+    <ClInclude Include="..\src\JobQueue.h" />
+    <ClInclude Include="..\src\LuaExtension.h" />
+    <ClInclude Include="..\src\MatchMarker.h" />
+    <ClInclude Include="..\src\MultiplexExtension.h" />
+    <ClInclude Include="..\src\PropSetFile.h" />
+    <ClInclude Include="..\src\ScintillaWindow.h" />
+    <ClInclude Include="..\src\SciTE.h" />
+    <ClInclude Include="..\src\SciTEKeys.h" />
+    <ClInclude Include="..\src\scite_lua_win.h" />
+    <ClInclude Include="..\src\StringHelpers.h" />
+    <ClInclude Include="..\src\StringList.h" />
+    <ClInclude Include="..\src\StripDefinition.h" />
+    <ClInclude Include="..\src\StyleDefinition.h" />
+    <ClInclude Include="..\src\StyleWriter.h" />
+    <ClInclude Include="..\src\Utf8_16.h" />
+    <ClInclude Include="..\src\Worker.h" />
+    <ClInclude Include="..\win32\DLLFunction.h" />
+    <ClInclude Include="..\win32\Strips.h" />
+    <ClInclude Include="..\win32\DLLFunction.h" />
+    <ClInclude Include="..\win32\SciTEWin.h" />
+    <ClInclude Include="..\win32\Strips.h" />
+    <ClInclude Include="..\win32\UniqueInstance.h" />
+    <ClInclude Include="..\win32\DLLFunction.h" />
+    <ClInclude Include="..\win32\Strips.h" />
+    <ClInclude Include="..\win32\*.h" />
+    <ClInclude Include="..\win32\DLLFunction.h" />
+    <ClInclude Include="..\win32\SciTEWin.h" />
+    <ClInclude Include="..\win32\Strips.h" />
+    <ClInclude Include="..\win32\UniqueInstance.h" />
+    <ClInclude Include="..\win32\*.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\scintilla\include\ILexer.h" />
+    <ClInclude Include="..\win32\DirectorExtension.h" />
+    <ClInclude Include="UniqueInstance.h" />
+    <ClInclude Include="..\src\SciTEBase.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\win32\SciTEWin.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="..\win32\SciTEWin.h">
+      <Filter>Core</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\win32\SciTERes.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Win32\SciBall.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Core">
+      <UniqueIdentifier>{ee71b2ae-30d6-4430-9238-e2e484e59767}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
