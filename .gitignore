@@ -1,2 +1,6 @@
 haha
 *.zip
+Release
+Debug
+*.aps
+*.user
