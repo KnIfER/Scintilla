@@ -49,6 +49,7 @@ const GUI::gui_char menuAccessIndicator[] = GUI_TEXT("&");
 #include "StringList.h"
 #include "StringHelpers.h"
 #include "FilePath.h"
+#include "LexillaLibrary.h"
 #include "StyleDefinition.h"
 #include "PropSetFile.h"
 #include "StyleWriter.h"
@@ -476,6 +477,8 @@ static const char *propertiesToForward[] = {
 	"fold.preprocessor",
 	"fold.quotes.nimrod",
 	"fold.quotes.python",
+	"fold.raku.comment.multiline",
+	"fold.raku.comment.pod",
 	"fold.rust.comment.explicit",
 	"fold.rust.comment.multiline",
 	"fold.rust.explicit.anywhere",
@@ -656,6 +659,16 @@ void SciTEBase::ReadProperties() {
 	if (extender)
 		extender->Clear();
 
+	const std::string lexillaPath = props.GetString("lexilla.path");
+	if (lexillaPath.length()) {
+		std::vector<std::string> paths = StringSplit(lexillaPath, ';');
+		FilePathSet fps;
+		for (std::string path : paths) {
+			fps.push_back(FilePath(GUI::StringFromUTF8(path)));
+		}
+		LexillaLoad(fps);
+	}
+
 	const std::string fileNameForExtension = ExtensionFileName();
 
 	std::string modulePath = props.GetNewExpandString("lexerpath.",
@@ -680,7 +693,15 @@ void SciTEBase::ReadProperties() {
 							 const_cast<char *>(lexer));
 			}
 		} else {
-			wEditor.SetLexerLanguage(language.c_str());
+			std::string languageCurrent = wEditor.LexerLanguage();
+			if (language != languageCurrent) {
+				Scintilla::ILexer5 *plexer = LexillaCreateLexer(language);
+				if (plexer) {
+					wEditor.SetILexer(plexer);
+				} else {
+					wEditor.SetLexerLanguage(language.c_str());
+				}
+			}
 		}
 	} else {
 		wEditor.SetLexer(SCLEX_NULL);
@@ -690,7 +711,12 @@ void SciTEBase::ReadProperties() {
 
 	lexLanguage = wEditor.Lexer();
 
-	wOutput.SetLexer(SCLEX_ERRORLIST);
+	Scintilla::ILexer5 *plexerErrorlist = LexillaCreateLexer("errorlist");
+	if (plexerErrorlist) {
+		wOutput.SetILexer(plexerErrorlist);
+	} else {
+		wOutput.SetLexerLanguage("errorlist");
+	}
 
 	const std::string kw0 = props.GetNewExpandString("keywords.", fileNameForExtension.c_str());
 	wEditor.SetKeyWords(0, kw0.c_str());
@@ -703,34 +729,30 @@ void SciTEBase::ReadProperties() {
 		wEditor.SetKeyWords(wl, kw.c_str());
 	}
 
-	subStyleBases.clear();
-	const int lenSSB = wEditor.SubStyleBases(nullptr);
-	if (lenSSB) {
+	subStyleBases = wEditor.SubStyleBases();
+	if (!subStyleBases.empty()) {
 		wEditor.FreeSubStyles();
 
-		subStyleBases.resize(lenSSB+1);
-		wEditor.SubStyleBases(&subStyleBases[0]);
-		subStyleBases.resize(lenSSB);	// Remove NUL
-
-		for (int baseStyle=0; baseStyle<lenSSB; baseStyle++) {
+		for (const unsigned char subStyleBase : subStyleBases) {
 			//substyles.cpp.11=2
+			const std::string sStyleBase = StdStringFromInteger(subStyleBase);
 			std::string ssSubStylesKey = "substyles.";
 			ssSubStylesKey += language;
 			ssSubStylesKey += ".";
-			ssSubStylesKey += StdStringFromInteger(subStyleBases[baseStyle]);
+			ssSubStylesKey += sStyleBase;
 			std::string ssNumber = props.GetNewExpandString(ssSubStylesKey.c_str());
 			int subStyleIdentifiers = atoi(ssNumber.c_str());
 
 			int subStyleIdentifiersStart = 0;
 			if (subStyleIdentifiers) {
-				subStyleIdentifiersStart = wEditor.AllocateSubStyles(subStyleBases[baseStyle], subStyleIdentifiers);
+				subStyleIdentifiersStart = wEditor.AllocateSubStyles(subStyleBase, subStyleIdentifiers);
 				if (subStyleIdentifiersStart < 0)
 					subStyleIdentifiers = 0;
 			}
 			for (int subStyle=0; subStyle<subStyleIdentifiers; subStyle++) {
 				// substylewords.11.1.$(file.patterns.cpp)=CharacterSet LexAccessor SString WordList
 				std::string ssWordsKey = "substylewords.";
-				ssWordsKey += StdStringFromInteger(subStyleBases[baseStyle]);
+				ssWordsKey += sStyleBase;
 				ssWordsKey += ".";
 				ssWordsKey += StdStringFromInteger(subStyle + 1);
 				ssWordsKey += ".";
@@ -1506,7 +1528,7 @@ void SciTEBase::ReadFontProperties() {
 	}
 
 	const int diffToSecondary = static_cast<int>(wEditor.DistanceToSecondaryStyles());
-	for (const char subStyleBase : subStyleBases) {
+	for (const unsigned char subStyleBase : subStyleBases) {
 		const int subStylesStart = wEditor.SubStylesStart(subStyleBase);
 		const int subStylesLength = wEditor.SubStylesLength(subStyleBase);
 		for (int subStyle=0; subStyle<subStylesLength; subStyle++) {
