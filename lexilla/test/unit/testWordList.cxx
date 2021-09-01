@@ -1,4 +1,6 @@
-// Unit Tests for Scintilla internal data structures
+/** @file testWordList.cxx
+ ** Unit Tests for Lexilla internal data structures
+ **/
 
 #include <string.h>
 
@@ -6,7 +8,7 @@
 
 #include "catch.hpp"
 
-using namespace Scintilla;
+using namespace Lexilla;
 
 // Test WordList.
 

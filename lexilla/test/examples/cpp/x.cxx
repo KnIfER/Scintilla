@@ -5,6 +5,18 @@
 	if (1);
 #endif
 
+/** @file LexCPP.cxx
+ <file>
+ <file >filename</file>
+ LexCPP.cxx.
+ </file>
+ **/
+
+/** Unknown doc keywords so in SCE_C_COMMENTDOCKEYWORDERROR:
+ @wrong LexCPP.cxx
+ <wrong>filename</wrong>
+**/
+
 #define M\
 
 \

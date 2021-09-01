@@ -13,9 +13,6 @@ useStlAlgorithm
 // Some non-explicit constructors are used for conversions or are private to lexers
 noExplicitConstructor
 
-// The styler parameter is not const as LexAccessor::operator[] is not const
-constParameter:lexilla/lexlib/StyleContext.cxx
-
 // The performance cost of by-value passing is often small and using a reference decreases
 // code legibility.
 passedByValue
@@ -31,6 +28,7 @@ constParameter:lexilla/lexers/LexBash.cxx
 uninitMemberVar:lexilla/lexers/LexBash.cxx
 variableScope:lexilla/lexers/LexBash.cxx
 variableScope:lexilla/lexers/LexBatch.cxx
+knownConditionTrueFalse:lexilla/lexers/LexBatch.cxx
 variableScope:lexilla/lexers/LexCmake.cxx
 knownConditionTrueFalse:lexilla/lexers/LexCmake.cxx
 constParameter:lexilla/lexers/LexCLW.cxx
@@ -40,9 +38,9 @@ variableScope:lexilla/lexers/LexCSS.cxx
 variableScope:lexilla/lexers/LexDataflex.cxx
 knownConditionTrueFalse:lexilla/lexers/LexECL.cxx
 variableScope:lexilla/lexers/LexErlang.cxx
+knownConditionTrueFalse:lexilla/lexers/LexErlang.cxx
 knownConditionTrueFalse:lexilla/lexers/LexEScript.cxx
 constParameter:lexilla/lexers/LexFortran.cxx
-constParameter:lexilla/lexers/LexFSharp.cxx
 redundantCondition:lexilla/lexers/LexFSharp.cxx
 knownConditionTrueFalse:lexilla/lexers/LexFSharp.cxx
 variableScope:lexilla/lexers/LexGui4Cli.cxx
@@ -50,6 +48,9 @@ constParameter:lexilla/lexers/LexHaskell.cxx
 constParameter:lexilla/lexers/LexHex.cxx
 constParameter:lexilla/lexers/LexHTML.cxx
 variableScope:lexilla/lexers/LexInno.cxx
+variableScope:lexilla/lexers/LexJulia.cxx
+constParameter:lexilla/lexers/LexJulia.cxx
+unreadVariable:lexilla/lexers/LexJulia.cxx
 variableScope:lexilla/lexers/LexLaTeX.cxx
 constParameter:lexilla/lexers/LexLaTeX.cxx
 constParameter:lexilla/lexers/LexLisp.cxx
@@ -67,10 +68,10 @@ variableScope:lexilla/lexers/LexNimrod.cxx
 variableScope:lexilla/lexers/LexNsis.cxx
 knownConditionTrueFalse:lexilla/lexers/LexNsis.cxx
 variableScope:lexilla/lexers/LexOpal.cxx
-knownConditionTrueFalse:lexilla/lexers/LexOpal.cxx
 constParameter:lexilla/lexers/LexOScript.cxx
 variableScope:lexilla/lexers/LexPB.cxx
 constParameter:lexilla/lexers/LexPerl.cxx
+knownConditionTrueFalse:lexilla/lexers/LexPerl.cxx
 constParameter:lexilla/lexers/LexPython.cxx
 shadowVariable:lexilla/lexers/LexPowerPro.cxx
 knownConditionTrueFalse:lexilla/lexers/LexPowerPro.cxx
@@ -79,8 +80,6 @@ constParameter:lexilla/lexers/LexRaku.cxx
 variableScope:lexilla/lexers/LexRaku.cxx
 redundantInitialization:lexilla/lexers/LexRegistry.cxx
 constParameter:lexilla/lexers/LexRuby.cxx
-variableScope:lexilla/lexers/LexRuby.cxx
-uninitMemberVar:lexilla/lexers/LexRuby.cxx
 constParameter:lexilla/lexers/LexRust.cxx
 constParameter:lexilla/lexers/LexScriptol.cxx
 variableScope:lexilla/lexers/LexSpecman.cxx
@@ -104,7 +103,6 @@ constParameter:lexilla/lexers/LexYAML.cxx
 
 // These are due to Accessor::IndentAmount not declaring the callback as taking a const.
 // Changing this could cause problems for downstream projects.
-constParameterCallback:lexilla/lexers/LexAsn1.cxx
 constParameterCallback:lexilla/lexers/LexEiffel.cxx
 constParameterCallback:lexilla/lexers/LexPython.cxx
 constParameterCallback:lexilla/lexers/LexScriptol.cxx
@@ -143,6 +141,3 @@ redundantAssignment:lexilla/lexers/LexCPP.cxx
 
 // Suppress everything in catch.hpp as won't be changing
 *:lexilla/test/unit/catch.hpp
-// For now, suppress all test source files as, since Catch 2, cppcheck shows many warnings showing
-// it doesn't understand the REQUIRE macro
-*:lexilla/test/unit/*.cxx

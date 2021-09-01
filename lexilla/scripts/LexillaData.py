@@ -41,20 +41,30 @@ sys.path.append(str(thisPath.parent.parent.parent / "scintilla" / "scripts"))
 
 import FileGenerator
 
+neutralEncoding = "cp437"	# Each byte value is valid in cp437
+
 def FindModules(lexFile):
     modules = []
     partLine = ""
-    with lexFile.open() as f:
+    with lexFile.open(encoding=neutralEncoding) as f:
+        lineNum = 0
         for l in f.readlines():
+            lineNum += 1
             l = l.rstrip()
             if partLine or l.startswith("LexerModule"):
                 if ")" in l:
                     l = partLine + l
+                    original = l
                     l = l.replace("(", " ")
                     l = l.replace(")", " ")
                     l = l.replace(",", " ")
                     parts = l.split()
-                    modules.append([parts[1], parts[2], parts[4][1:-1]])
+                    lexerName = parts[4]
+                    if not (lexerName.startswith('"') and lexerName.endswith('"')):
+                        print(f"{lexFile}:{lineNum}: Bad LexerModule statement:\n{original}")
+                        exit(1)
+                    lexerName = lexerName.strip('"')
+                    modules.append([parts[1], parts[2], lexerName])
                     partLine = ""
                 else:
                     partLine = partLine + l
@@ -102,7 +112,7 @@ knownIrregularProperties = [
 
 def FindProperties(lexFile):
     properties = {}
-    with open(lexFile) as f:
+    with open(lexFile, encoding=neutralEncoding) as f:
         for l in f.readlines():
             if ("GetProperty" in l or "DefineProperty" in l) and "\"" in l:
                 l = l.strip()
@@ -118,7 +128,7 @@ def FindProperties(lexFile):
 
 def FindPropertyDocumentation(lexFile):
     documents = {}
-    with lexFile.open() as f:
+    with lexFile.open(encoding=neutralEncoding) as f:
         name = ""
         for l in f.readlines():
             l = l.strip()
@@ -171,7 +181,7 @@ def FindCredits(historyFile):
                 credit = l[4:-5]
                 if "<a" in l:
                     title, a, rest = credit.partition("<a href=")
-                    urlplus, bracket, end = rest.partition(">")
+                    urlplus, _bracket, end = rest.partition(">")
                     name = end.split("<")[0]
                     url = urlplus[1:-1]
                     credit = title.strip()

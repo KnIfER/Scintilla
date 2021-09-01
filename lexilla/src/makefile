@@ -52,6 +52,9 @@ endif
 
 ifdef windir
     LDFLAGS += -mwindows
+	ifndef CLANG
+	    LDFLAGS += -Wl,--kill-at
+	endif
 else
     BASE_FLAGS += -fPIC
 endif
@@ -107,6 +110,7 @@ LEXLIB_OBJS=\
 	CharacterCategory.o \
 	CharacterSet.o \
 	DefaultLexer.o \
+	LexAccessor.o \
 	LexerBase.o \
 	LexerModule.o \
 	LexerSimple.o \

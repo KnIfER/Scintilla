@@ -32,16 +32,12 @@
         </td>
       </tr>
     </table>
-    <h2>
-       History of Lexilla
-    </h2>
+    <h1>History of Lexilla</h1>
     <p>
        Lexilla was originally code that was part of the Scintilla project.
        Thus it shares much of the history and contributors of Scintilla before it was extracted as its own project.
     </p>
-    <h3>
-       Contributors
-    </h3>
+    <h2>Contributors</h2>
     <p>
        Thanks to all the people that have contributed patches, bug reports and suggestions.
     </p>
@@ -566,8 +562,183 @@
 	<td>Derek Brown</td>
       </tr><tr>
 	<td>Robert Di Pardo</td>
+	<td>riQQ</td>
+	<td>YX Hao</td>
+	<td>Bertrand Lacoste</td>
+      </tr><tr>
+	<td>Ivan Ustûžanin</td>
     </tr>
     </table>
+    <h2>Releases</h2>
+    <h3>
+       <a href="https://www.scintilla.org/lexilla511.zip">Release 5.1.1</a>
+    </h3>
+    <ul>
+	<li>
+	Released 26 July 2021.
+	</li>
+	<li>
+	On 32-bit Win32 using Visual C++ projects, stop exported functions ending with @n causing failures with GetProcAddress.
+	</li>
+	<li>
+	Fixed crash when calling TagsOfStyle on C++ lexer after allocating substyles.
+	</li>
+	<li>
+	Fixed folding for Julia which could be inconsistent depending on range folded.
+	Added SCE_JULIA_KEYWORD4 and SCE_JULIA_TYPEOPERATOR lexical styles and
+	changed keyword set 4 from "Raw string literals" to "Built in functions".
+	Property lexer.julia.string.interpolation removed.
+	Updated set of characters for identifiers.
+	<a href="https://github.com/ScintillaOrg/lexilla/pull/13">Pull request #13</a>.
+	</li>
+	<li>
+	Fixed Markdown emphasis spans to only be recognized when closed in same paragraph.
+	<a href="https://sourceforge.net/p/scintilla/bugs/1216/">Bug #1216</a>.
+	</li>
+	<li>
+	Fixed Markdown code block to terminate when end marker is indented.
+	Display all of end marker in code block style.
+	Only recognize inline code when closed in same paragraph.
+	<a href="https://sourceforge.net/p/scintilla/bugs/2247/">Bug #2247</a>.
+	</li>
+	<li>
+	Fixed Matlab to not allow escape sequences in double-quoted strings.
+	<a href="https://github.com/ScintillaOrg/lexilla/issues/18">Issue #18</a>.
+	</li>
+	<li>
+	Support flexible heredoc and nowdoc syntax for PHP.
+	<a href="https://github.com/ScintillaOrg/lexilla/issues/19">Issue #19</a>.
+	</li>
+	<li>
+	Enabled '_' digit separator in numbers for PHP.
+	<a href="https://github.com/ScintillaOrg/lexilla/issues/19">Issue #19</a>.
+	</li>
+	<li>
+	Stop styling attributes as comments for PHP.
+	<a href="https://github.com/ScintillaOrg/lexilla/issues/19">Issue #19</a>.
+	</li>
+    </ul>
+    <h3>
+       <a href="https://www.scintilla.org/lexilla510.zip">Release 5.1.0</a>
+    </h3>
+    <ul>
+	<li>
+	Released 23 June 2021.
+	</li>
+	<li>
+	This is a stable release. The Lexilla protocol should remain compatible through 5.x releases.
+	</li>
+	<li>
+	Fixed bugs with styling Erlang by handling \n and \r\n line endings consistently.
+	</li>
+	<li>
+	Fixed folding for F# open statements and for strings that contain comment prefixes.
+	</li>
+	<li>
+	Format specifiers lexed in F# strings.
+	</li>
+	<li>
+	Fixed folding for ASP files where scripts were treated inconsistently when '&lt;%' was included
+	or not included in range examined.
+	</li>
+	<li>
+	Fixed folding of Raku heredocs that start with "q:to" or "qq:to".
+	</li>
+	<li>
+	Fixed folding at end of Ruby files where these is no final new line.
+	</li>
+	<li>
+	Made folding of Tcl files more consistent by always treating completely empty lines as whitespace.
+	</li>
+	<li>
+	Fixed styling of "a:b" with no spaces in YAML as a single piece of text instead of a key-value pair.
+	<a href="https://github.com/ScintillaOrg/lexilla/pull/15">Pull request #15</a>.
+	</li>
+    </ul>
+    <h3>
+       <a href="https://www.scintilla.org/lexilla503.zip">Release 5.0.3</a>
+    </h3>
+    <ul>
+	<li>
+	Released 2 June 2021.
+	</li>
+	<li>
+	Add namespace feature with GetNameSpace function.
+	</li>
+	<li>
+	Add Julia lexer.
+	<a href="https://sourceforge.net/p/scintilla/feature-requests/1380/">Feature #1380</a>.
+	</li>
+	<li>
+	Fix transition to comment for --> inside JavaScript string.
+	<a href="https://sourceforge.net/p/scintilla/bugs/2207/">Bug #2207</a>.
+	</li>
+	<li>
+	Fix variable expansion in Batch.
+	<a href="https://github.com/ScintillaOrg/lexilla/issues/4">Issue #4</a>.
+	</li>
+	<li>
+	Fix empty link titles in Markdown.
+	<a href="https://sourceforge.net/p/scintilla/bugs/2235/">Bug #2235</a>.
+	Also fix detection of whether the previous line had content which treated '\n' and '\r\n' line endings differently.
+	</li>
+	<li>
+	Remove nested comment and long string support as these were removed from Lua.
+	<a href="https://sourceforge.net/p/scintilla/bugs/2205/">Bug #2205</a>.
+	</li>
+	<li>
+	Update to Unicode 13.
+	<a href="https://sourceforge.net/p/scintilla/feature-requests/1379/">Feature #1379</a>.
+	</li>
+	<li>
+	AddStaticLexerModule function adds a static lexer to Lexilla's list.
+	</li>
+	<li>
+	On Win32 enable hardware-enforced stack protection.
+	<a href="https://sourceforge.net/p/scintilla/feature-requests/1405/">Feature #1405</a>.
+	</li>
+	<li>
+	On 32-bit Win32 using g++, stop exported functions ending with @n causing failures with GetProcAddress.
+	<a href="https://github.com/ScintillaOrg/lexilla/issues/10">Issue #10</a>.
+	</li>
+    </ul>
+    <h3>
+       <a href="https://www.scintilla.org/lexilla502.zip">Release 5.0.2</a>
+    </h3>
+    <ul>
+	<li>
+	Released 23 April 2021.
+	</li>
+	<li>
+	Fix assertion in cpp lexer handling of preprocessor.
+	Empty preprocessor statement '#' caused preprocessor history to be stored on incorrect line number.
+	Dangling #else or #elif without corresponding #if led to inconsistent state.
+	Change treatment of empty preprocessor statement to set subsequent line end characters in
+	preprocessor style as this is more consistent with other preprocessor directives and avoids
+	differences between \n and \r\n line ends.
+	<a href="https://sourceforge.net/p/scintilla/bugs/2245/">Bug #2245</a>.
+	</li>
+    </ul>
+    <h3>
+       <a href="https://www.scintilla.org/lexilla501.zip">Release 5.0.1</a>
+    </h3>
+    <ul>
+	<li>
+	Released 9 April 2021.
+	</li>
+	<li>
+	Add LexerNameFromID function to Lexilla protocol as optional and temporary to
+	help applications migrate to Lexilla.
+	It is marked deprecated and will be removed in a future release.
+	</li>
+	<li>
+	The cpp lexer supports XML styled comment doc keywords.
+	<a href="https://github.com/ScintillaOrg/lexilla/pull/2">Pull request #2</a>.
+	</li>
+	<li>
+	The errorlist lexer detects NMAKE fatal errors and Microsoft linker errors as SCE_ERR_MS.
+	</li>
+    </ul>
     <h3>
        <a href="https://www.scintilla.org/lexilla500.zip">Release 5.0.0</a>
     </h3>

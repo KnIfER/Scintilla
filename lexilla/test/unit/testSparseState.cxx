@@ -1,4 +1,6 @@
-// Unit Tests for Scintilla internal data structures
+/** @file testSparseState.cxx
+ ** Unit Tests for Lexilla internal data structures
+ **/
 
 #include <string>
 #include <string_view>
@@ -12,7 +14,7 @@
 
 #include "catch.hpp"
 
-using namespace Scintilla;
+using namespace Lexilla;
 
 // Test SparseState.
 

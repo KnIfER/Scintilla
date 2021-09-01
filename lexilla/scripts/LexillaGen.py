@@ -115,12 +115,13 @@ def RegenerateAll(rootDirectory):
         "#define VERSION_WORDS " + versionCommad)
     ReplaceREInFile(docDir / "LexillaDownload.html",
         r"/www.scintilla.org/([a-zA-Z]+)\d\d\d",
-        r"/www.scintilla.org/\g<1>" +  version)
+        r"/www.scintilla.org/\g<1>" +  version,
+        0)
 
     pathMain = lexillaDir / "doc" / "Lexilla.html"
     UpdateLineInFile(pathMain,
-        '          <font color="#FFCC99" size="3"> Release version',
-        '          <font color="#FFCC99" size="3"> Release version ' + \
+        '          <font color="#FFCC99" size="3">Release version',
+        '          <font color="#FFCC99" size="3">Release version ' + \
         versionDotted + '<br />')
     UpdateLineInFile(pathMain,
         '           Site last modified',
@@ -128,6 +129,9 @@ def RegenerateAll(rootDirectory):
     UpdateLineInFile(pathMain,
         '    <meta name="Date.Modified"',
         '    <meta name="Date.Modified" content="' + lex.dateModified + '" />')
+    UpdateLineInFile(lexillaDir / "doc" / "LexillaHistory.html",
+        '	Released ',
+        '	Released ' + lex.dmyModified + '.')
 
     lexillaXcode = lexillaDir / "src" / "Lexilla"
     lexillaXcodeProject = lexillaXcode / "Lexilla.xcodeproj" / "project.pbxproj"
@@ -138,7 +142,8 @@ def RegenerateAll(rootDirectory):
         "CFBundleShortVersionString", versionDotted)
 
     ReplaceREInFile(lexillaXcodeProject, "CURRENT_PROJECT_VERSION = [0-9.]+;",
-        f'CURRENT_PROJECT_VERSION = {versionDotted};')
+        f'CURRENT_PROJECT_VERSION = {versionDotted};',
+        0)
 
     RegenerateXcodeProject(lexillaXcodeProject, lex.lexFiles, lexerReferences)
 

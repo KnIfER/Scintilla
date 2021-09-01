@@ -1,4 +1,4 @@
-// Scintilla source code edit control
+// Lexilla lexer library
 /** @file TestDocument.cxx
  ** Lexer testing.
  **/
@@ -60,7 +60,7 @@ namespace {
 
 void TestDocument::Set(std::string_view sv) {
 	text = sv;
-	textStyles.resize(text.size());
+	textStyles.resize(text.size() + 1);
 	lineStarts.clear();
 	endStyled = 0;
 	lineStarts.push_back(0);
@@ -71,7 +71,13 @@ void TestDocument::Set(std::string_view sv) {
 	}
 	lineStarts.push_back(text.length());
 	lineStates.resize(lineStarts.size());
+	lineLevels.resize(lineStarts.size(), 0x400);
 }
+
+#if _MSC_VER
+// IDocument interface does not specify noexcept so best to not add it to implementation
+#pragma warning(disable: 26440)
+#endif
 
 int SCI_METHOD TestDocument::Version() const {
 	return Scintilla::dvRelease4;
@@ -89,6 +95,9 @@ void SCI_METHOD TestDocument::GetCharRange(char *buffer, Sci_Position position, 
 }
 
 char SCI_METHOD TestDocument::StyleAt(Sci_Position position) const {
+	if (position < 0) {
+		return 0;
+	}
 	return textStyles.at(position);
 }
 
@@ -97,7 +106,7 @@ Sci_Position SCI_METHOD TestDocument::LineFromPosition(Sci_Position position) co
 		return lineStarts.size() - 1 - 1;
 	}
 
-	std::vector<Sci_Position>::const_iterator it = std::lower_bound(lineStarts.begin(), lineStarts.end(), position);
+	const std::vector<Sci_Position>::const_iterator it = std::lower_bound(lineStarts.begin(), lineStarts.end(), position);
 	Sci_Position line = it - lineStarts.begin();
 	if (*it > position)
 		line--;
@@ -105,20 +114,21 @@ Sci_Position SCI_METHOD TestDocument::LineFromPosition(Sci_Position position) co
 }
 
 Sci_Position SCI_METHOD TestDocument::LineStart(Sci_Position line) const {
+	if (line < 0) {
+		return 0;
+	}
 	if (line >= static_cast<Sci_Position>(lineStarts.size())) {
 		return text.length();
 	}
 	return lineStarts.at(line);
 }
 
-int SCI_METHOD TestDocument::GetLevel(Sci_Position) const {
-	// Only for folding so not implemented yet
-	return 0;
+int SCI_METHOD TestDocument::GetLevel(Sci_Position line) const {
+	return lineLevels.at(line);
 }
 
-int SCI_METHOD TestDocument::SetLevel(Sci_Position, int) {
-	// Only for folding so not implemented yet
-	return 0;
+int SCI_METHOD TestDocument::SetLevel(Sci_Position line, int level) {
+	return lineLevels.at(line) = level;
 }
 
 int SCI_METHOD TestDocument::GetLineState(Sci_Position line) const {
@@ -234,6 +244,12 @@ int SCI_METHOD TestDocument::GetCharacterAndWidth(Sci_Position position, Sci_Pos
 		return '\0';
 	}
 	const unsigned char leadByte = text.at(position);
+	if (leadByte < 0x80) {
+		if (pWidth) {
+			*pWidth = 1;
+		}
+		return leadByte;
+	}
 	const int widthCharBytes = UTF8BytesOfLead[leadByte];
 	unsigned char charBytes[] = { leadByte,0,0,0 };
 	for (int b = 1; b < widthCharBytes; b++)

@@ -11,7 +11,9 @@
 #include <cassert>
 
 #include <string>
+#include <string_view>
 #include <map>
+#include <functional>
 
 #include "ILexer.h"
 #include "Scintilla.h"
@@ -27,6 +29,7 @@
 // clang-format on
 
 using namespace Scintilla;
+using namespace Lexilla;
 
 static const char *const lexerName = "fsharp";
 static constexpr int WORDLIST_SIZE = 5;
@@ -90,8 +93,10 @@ struct OptionSetFSharp : public OptionSet<OptionsFSharp> {
 
 const CharacterSet setOperators = CharacterSet(CharacterSet::setNone, "~^'-+*/%=@|&<>()[]{};,:!?");
 const CharacterSet setClosingTokens = CharacterSet(CharacterSet::setNone, ")}]");
+const CharacterSet setFormatSpecs = CharacterSet(CharacterSet::setNone, ".%aAbcdeEfFgGiMoOstuxX0123456789");
+const CharacterSet setFormatFlags = CharacterSet(CharacterSet::setNone, ".-+0 ");
 const CharacterSet numericMetaChars1 = CharacterSet(CharacterSet::setNone, "_IbeEflmnosuxy");
-const CharacterSet numericMetaChars2 = CharacterSet(CharacterSet::setNone,"lnsy");
+const CharacterSet numericMetaChars2 = CharacterSet(CharacterSet::setNone, "lnsy");
 std::map<int, int> numericPrefixes = { { 'b', 2 }, { 'o', 8 }, { 'x', 16 } };
 constexpr Sci_Position ZERO_LENGTH = -1;
 
@@ -118,7 +123,7 @@ class UnicodeChar {
 
 public:
 	UnicodeChar() noexcept = default;
-	UnicodeChar(const int prefix) {
+	explicit UnicodeChar(const int prefix) {
 		if (IsADigit(prefix)) {
 			*asciiDigits = prefix;
 			if (*asciiDigits >= '0' && *asciiDigits <= '2') {
@@ -186,11 +191,11 @@ inline bool MatchStreamCommentStart(StyleContext &cxt) {
 	return (cxt.Match('(', '*') && cxt.GetRelative(2) != ')');
 }
 
-inline bool MatchStreamCommentEnd(StyleContext &cxt) {
+inline bool MatchStreamCommentEnd(const StyleContext &cxt) {
 	return (cxt.ch == ')' && cxt.chPrev == '*');
 }
 
-inline bool MatchLineComment(StyleContext &cxt) {
+inline bool MatchLineComment(const StyleContext &cxt) {
 	// style shebang lines as comments in F# scripts:
 	// https://fsharp.org/specs/language-spec/4.1/FSharpSpec-4.1-latest.pdf#page=30&zoom=auto,-98,537
 	return cxt.Match('/', '/') || cxt.Match('#', '!');
@@ -201,27 +206,27 @@ inline bool MatchLineNumberStart(StyleContext &cxt) {
 		(cxt.ch == '#' && (IsADigit(cxt.chNext) || IsADigit(cxt.GetRelative(2)))));
 }
 
-inline bool MatchPPDirectiveStart(StyleContext &cxt) {
+inline bool MatchPPDirectiveStart(const StyleContext &cxt) {
 	return (cxt.atLineStart && cxt.ch == '#' && iswordstart(cxt.chNext));
 }
 
-inline bool MatchTypeAttributeStart(StyleContext &cxt) {
+inline bool MatchTypeAttributeStart(const StyleContext &cxt) {
 	return cxt.Match('[', '<');
 }
 
-inline bool MatchTypeAttributeEnd(StyleContext &cxt) {
+inline bool MatchTypeAttributeEnd(const StyleContext &cxt) {
 	return (cxt.ch == ']' && cxt.chPrev == '>');
 }
 
-inline bool MatchQuotedExpressionStart(StyleContext &cxt) {
+inline bool MatchQuotedExpressionStart(const StyleContext &cxt) {
 	return cxt.Match('<', '@');
 }
 
-inline bool MatchQuotedExpressionEnd(StyleContext &cxt) {
+inline bool MatchQuotedExpressionEnd(const StyleContext &cxt) {
 	return (cxt.ch == '>' && cxt.chPrev == '@');
 }
 
-inline bool MatchStringStart(StyleContext &cxt) {
+inline bool MatchStringStart(const StyleContext &cxt) {
 	return (cxt.ch == '"' || cxt.Match('@', '"') || cxt.Match('$', '"') || cxt.Match('`', '`'));
 }
 
@@ -263,7 +268,7 @@ inline bool IsNumber(StyleContext &cxt, const int base = 10) {
 		(IsADigit(cxt.GetRelative(-2), base) && numericMetaChars2.Contains(cxt.ch));
 }
 
-inline bool IsFloat(StyleContext &cxt) {
+inline bool IsFloat(const StyleContext &cxt) {
 	return (cxt.ch == '.' && IsADigit(cxt.chPrev)) ||
 		((cxt.ch == '+' || cxt.ch == '-' ) && IsADigit(cxt.chNext));
 }
@@ -422,9 +427,7 @@ void SCI_METHOD LexerFSharp::Lex(Sci_PositionU start, Sci_Position length, int i
 			case SCE_FSHARP_LINENUM:
 			case SCE_FSHARP_PREPROCESSOR:
 			case SCE_FSHARP_COMMENTLINE:
-				// TestLexers.cxx will warn about splitting styles across CRLF line endings
-				// without the second condition
-				if (sc.atLineEnd || sc.ch == '\r') {
+				if (sc.MatchLineEnd()) {
 					state = SCE_FSHARP_DEFAULT;
 					advance = false;
 				}
@@ -486,6 +489,9 @@ void SCI_METHOD LexerFSharp::Lex(Sci_PositionU start, Sci_Position length, int i
 							break;
 						}
 					}
+				} else if (sc.ch == '%' && !(fsStr.startChar == '`' || fsStr.startChar == '$') &&
+					   (setFormatSpecs.Contains(sc.chNext) || setFormatFlags.Contains(sc.chNext))) {
+					state = SCE_FSHARP_FORMAT_SPEC;
 				}
 				break;
 			case SCE_FSHARP_IDENTIFIER:
@@ -530,6 +536,14 @@ void SCI_METHOD LexerFSharp::Lex(Sci_PositionU start, Sci_Position length, int i
 					: setOperators.Contains(sc.ch) ? SCE_FSHARP_OPERATOR : SCE_FSHARP_DEFAULT;
 				currentBase = (state == SCE_FSHARP_NUMBER) ? currentBase : 10;
 				break;
+			case SCE_FSHARP_FORMAT_SPEC:
+				if (!setFormatSpecs.Contains(sc.chNext) ||
+				    !(setFormatFlags.Contains(sc.ch) || IsADigit(sc.ch)) ||
+				    (setFormatFlags.Contains(sc.ch) && sc.ch == sc.chNext)) {
+					colorSpan++;
+					state = (fsStr.startChar == '@') ? SCE_FSHARP_VERBATIM : SCE_FSHARP_STRING;
+				}
+				break;
 		}
 
 		if (state >= SCE_FSHARP_DEFAULT) {
@@ -545,7 +559,11 @@ void SCI_METHOD LexerFSharp::Lex(Sci_PositionU start, Sci_Position length, int i
 	sc.Complete();
 }
 
-bool LineContains(LexAccessor &styler, const char *word, const Sci_Position start, const Sci_Position end = 1);
+bool LineContains(LexAccessor &styler, const char *word, const Sci_Position start, const Sci_Position end = 1,
+		  const int chAttr = SCE_FSHARP_DEFAULT);
+
+void FoldLexicalGroup(LexAccessor &styler, int &levelNext, const Sci_Position lineCurrent, const char *word,
+		      const int chAttr);
 
 void SCI_METHOD LexerFSharp::Fold(Sci_PositionU start, Sci_Position length, int initStyle, IDocument *pAccess) {
 	if (!options.fold) {
@@ -558,8 +576,6 @@ void SCI_METHOD LexerFSharp::Fold(Sci_PositionU start, Sci_Position length, int 
 	Sci_Position lineCurrent = styler.GetLine(startPos);
 	Sci_Position lineNext = lineCurrent + 1;
 	Sci_Position lineStartNext = styler.LineStart(lineNext);
-	Sci_Position commentLinesInFold = ZERO_LENGTH;
-	Sci_Position importsInFold = ZERO_LENGTH;
 	int style = initStyle;
 	int styleNext = styler.StyleAt(startPos);
 	char chNext = styler[startPos];
@@ -576,27 +592,19 @@ void SCI_METHOD LexerFSharp::Fold(Sci_PositionU start, Sci_Position length, int 
 	for (Sci_PositionU i = start; i < endPos; i++) {
 		const Sci_Position currentPos = static_cast<Sci_Position>(i);
 		const bool atEOL = currentPos == (lineStartNext - 1);
+		const bool atLineOrDocEnd = (atEOL || (i == (endPos - 1)));
+		const bool atDosOrMacEOL = (atEOL || styler.SafeGetCharAt(currentPos) == '\r');
 		const int stylePrev = style;
 		const char ch = chNext;
-		bool inLineComment = (style == SCE_FSHARP_COMMENTLINE);
+		const bool inLineComment = (stylePrev == SCE_FSHARP_COMMENTLINE);
 		style = styleNext;
 		styleNext = styler.StyleAt(currentPos + 1);
 		chNext = styler.SafeGetCharAt(currentPos + 1);
 
 		if (options.foldComment) {
-			if (options.foldCommentMultiLine && style == SCE_FSHARP_COMMENTLINE &&
-			    stylePrev != SCE_FSHARP_COMMENTLINE) {
-				const bool haveCommentList = LineContains(styler, "//", lineStartNext, lineNext);
-				if (haveCommentList) {
-					commentLinesInFold++;
-					if (commentLinesInFold < 1) {
-						levelNext++;
-					}
-				} else {
-					const int8_t offset = commentLinesInFold > 0 ? commentLinesInFold : 1;
-					levelNext -= offset;
-					commentLinesInFold = ZERO_LENGTH;
-				}
+			if (options.foldCommentMultiLine && inLineComment && atDosOrMacEOL &&
+			    (lineCurrent > 0 || styler.StyleAt(lineStartNext) == SCE_FSHARP_COMMENTLINE)) {
+				FoldLexicalGroup(styler, levelNext, lineCurrent, "//", SCE_FSHARP_COMMENTLINE);
 			}
 
 			if (options.foldCommentStream && style == SCE_FSHARP_COMMENT && !inLineComment) {
@@ -616,25 +624,16 @@ void SCI_METHOD LexerFSharp::Fold(Sci_PositionU start, Sci_Position length, int 
 			}
 		}
 
-		if (options.foldImports && style == SCE_FSHARP_KEYWORD && LineContains(styler, "open", lineCurrent)) {
-			const bool haveImportList = LineContains(styler, "open", lineStartNext, lineNext);
-			if (haveImportList) {
-				importsInFold++;
-				if (importsInFold < 1) {
-					levelNext++;
-				}
-			} else {
-				const int8_t offset = importsInFold > 0 ? importsInFold : 1;
-				levelNext -= offset;
-				importsInFold = ZERO_LENGTH;
-			}
+		if (options.foldImports && atLineOrDocEnd &&
+		    LineContains(styler, "open ", lineCurrent, 1, SCE_FSHARP_KEYWORD)) {
+			FoldLexicalGroup(styler, levelNext, lineCurrent, "open ", SCE_FSHARP_KEYWORD);
 		}
 
 		if (!IsASpace(ch)) {
 			visibleChars++;
 		}
 
-		if (atEOL || (i == (endPos - 1))) {
+		if (atLineOrDocEnd) {
 			int levelUse = levelCurrent;
 			int lev = levelUse | levelNext << 16;
 
@@ -649,7 +648,6 @@ void SCI_METHOD LexerFSharp::Fold(Sci_PositionU start, Sci_Position length, int 
 			}
 
 			visibleChars = 0;
-			inLineComment = false;
 			lineCurrent++;
 			lineNext = lineCurrent + 1;
 			lineStartNext = styler.LineStart(lineNext);
@@ -662,17 +660,39 @@ void SCI_METHOD LexerFSharp::Fold(Sci_PositionU start, Sci_Position length, int 
 	}
 }
 
-bool LineContains(LexAccessor &styler, const char *word, const Sci_Position start, const Sci_Position end) {
+bool LineContains(LexAccessor &styler, const char *word, const Sci_Position start, const Sci_Position end,
+		  const int chAttr) {
 	bool found = false;
+	bool requireStyle = (chAttr > SCE_FSHARP_DEFAULT);
 	const Sci_Position limit = (end > 1) ? end : start;
 	for (Sci_Position i = start; i < styler.LineEnd(limit); i++) {
 		if (styler.Match(i, word)) {
-			found = true;
+			found = requireStyle ? styler.StyleAt(i) == chAttr : true;
 			break;
 		}
 	}
 	return found;
 }
+
+void FoldLexicalGroup(LexAccessor &styler, int &levelNext, const Sci_Position lineCurrent, const char *word,
+		      const int chAttr) {
+	const Sci_Position linePrev = lineCurrent - 1;
+	const Sci_Position lineNext = lineCurrent + 1;
+	const Sci_Position lineStartPrev = styler.LineStart(linePrev);
+	const Sci_Position lineStartNext = styler.LineStart(lineNext);
+	const bool atFoldGroupStart =
+	    (lineCurrent == 0 || !LineContains(styler, word, lineStartPrev, linePrev, chAttr)) &&
+	    LineContains(styler, word, lineStartNext, lineNext, chAttr);
+	const bool atFoldGroupEnd =
+		LineContains(styler, word, lineStartPrev, linePrev, chAttr) &&
+		!LineContains(styler, word, lineStartNext, lineNext, chAttr);
+
+	if (atFoldGroupStart) {
+		levelNext++;
+	} else if (atFoldGroupEnd && levelNext > SC_FOLDLEVELBASE) {
+		levelNext--;
+	}
+}
 } // namespace
 
-LexerModule lmFSharp(SCLEX_FSHARP, LexerFSharp::LexerFactoryFSharp, lexerName, fsharpWordLists);
+LexerModule lmFSharp(SCLEX_FSHARP, LexerFSharp::LexerFactoryFSharp, "fsharp", fsharpWordLists);
