@@ -14,14 +14,6 @@ extern const GUI::gui_char propUserFileName[];
 extern const GUI::gui_char propGlobalFileName[];
 extern const GUI::gui_char propAbbrevFileName[];
 
-#ifdef _WIN32
-#ifdef _MSC_VER
-// Shut up level 4 warning:
-// warning C4800: forcing value to bool 'true' or 'false' (performance warning)
-#pragma warning(disable: 4800)
-#endif
-#endif
-
 inline int Minimum(int a, int b) noexcept {
 	return (a < b) ? a : b;
 }
@@ -373,11 +365,11 @@ protected:
 	FilePath dirNameAtExecute;
 	FilePath dirNameForExecute;
 
-	enum { fileStackMax = 10 };
+	static constexpr int fileStackMax = 10;
 	RecentFile recentFileStack[fileStackMax];
 	enum { fileStackCmdID = IDM_MRUFILE, bufferCmdID = IDM_BUFFER };
 
-	enum { importMax = 50 };
+	static constexpr int importMax = 50;
 	FilePathSet importFiles;
 	enum { importCmdID = IDM_IMPORT };
 	ImportFilter filter;
@@ -1004,7 +996,7 @@ public:
 
 	GUI::WindowID GetID() const noexcept { return wSciTE.GetID(); }
 
-	virtual bool PerformOnNewThread(Worker *pWorker) = 0;
+	bool PerformOnNewThread(Worker *pWorker);
 	// WorkerListener
 	void PostOnMainThread(int cmd, Worker *pWorker) override = 0;
 	virtual void WorkerCommand(int cmd, Worker *pWorker);

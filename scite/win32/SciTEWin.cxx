@@ -9,6 +9,10 @@
 
 #include "SciTEWin.h"
 
+#ifndef WM_DPICHANGED
+#define WM_DPICHANGED 0x02E0
+#endif
+
 #ifndef NO_EXTENSIONS
 #include "MultiplexExtension.h"
 
@@ -157,7 +161,7 @@ bool UIShouldBeFlat() noexcept {
 	osvi.dwMajorVersion = 6;
 	osvi.dwMinorVersion = 2;
 
-	const BYTE op = VER_GREATER_EQUAL;
+	constexpr BYTE op = VER_GREATER_EQUAL;
 	DWORDLONG dwlConditionMask = 0;
 	VER_SET_CONDITION(dwlConditionMask, VER_MAJORVERSION, op);
 	VER_SET_CONDITION(dwlConditionMask, VER_MINORVERSION, op);
@@ -450,7 +454,7 @@ void SciTEWin::ReadProperties() {
 	SciTEBase::ReadProperties();
 	if (flatterUI) {
 		if (foldColour.empty() && foldHiliteColour.empty()) {
-			const SA::Colour lightMargin = ColourRGB(0xF7, 0xF7, 0xF7);
+			constexpr SA::Colour lightMargin = ColourRGB(0xF7, 0xF7, 0xF7);
 			CallChildren(SA::Message::SetFoldMarginColour, 1, lightMargin);
 			CallChildren(SA::Message::SetFoldMarginHiColour, 1, lightMargin);
 		}
@@ -842,7 +846,7 @@ DWORD SciTEWin::ExecuteOne(const Job &jobToRun) {
 	HANDLE hPipeRead {};
 	// Create pipe for output redirection
 	// read handle, write handle, security attributes,  number of bytes reserved for pipe
-	const DWORD pipeBufferSize = 64 * 1024;
+	constexpr DWORD pipeBufferSize = 64 * 1024;
 	::CreatePipe(&hPipeRead, &hPipeWrite, &sa, pipeBufferSize);
 
 	// Create pipe for input redirection. In this code, you do not
@@ -1035,7 +1039,7 @@ DWORD SciTEWin::ExecuteOne(const Job &jobToRun) {
 				}
 			}
 
-			if (jobQueue.SetCancelFlag(0)) {
+			if (jobQueue.SetCancelFlag(false)) {
 				if (WAIT_OBJECT_0 != ::WaitForSingleObject(pi.hProcess, 500)) {
 					// We should use it only if the GUI process is stuck and
 					// don't answer to a normal termination command.
@@ -1268,7 +1272,7 @@ void SciTEWin::StopExecute() {
 	}
 #endif
 
-	jobQueue.SetCancelFlag(1);
+	jobQueue.SetCancelFlag(true);
 }
 
 void SciTEWin::AddCommand(const std::string &cmd, const std::string &dir, JobSubsystem jobType, const std::string &input, int flags) {
@@ -1291,17 +1295,6 @@ void SciTEWin::AddCommand(const std::string &cmd, const std::string &dir, JobSub
 			SciTEBase::AddCommand(cmd, dir, jobType, input, flags);
 		}
 	}
-}
-
-static void WorkerThread(void *ptr) {
-	Worker *pWorker = static_cast<Worker *>(ptr);
-	pWorker->Execute();
-}
-
-bool SciTEWin::PerformOnNewThread(Worker *pWorker) {
-	void *threadArgument = pWorker;
-	const uintptr_t result = _beginthread(WorkerThread, 1024 * 1024, threadArgument);
-	return result != static_cast<uintptr_t>(-1);
 }
 
 void SciTEWin::PostOnMainThread(int cmd, Worker *pWorker) {
@@ -1340,7 +1333,7 @@ void SciTEWin::RestorePosition() {
 	const int height = propsSession.GetInt("position.height", CW_USEDEFAULT);
 	cmdShow = propsSession.GetInt("position.maximize", 0) ? SW_MAXIMIZE : 0;
 
-	const int defaultValue = static_cast<int>(CW_USEDEFAULT);
+	constexpr int defaultValue = CW_USEDEFAULT;
 	if (left != defaultValue &&
 			top != defaultValue &&
 			width != defaultValue &&
@@ -1711,7 +1704,7 @@ bool SciTEWin::IsStdinBlocked() {
 				- a busy pipe "scite \*.,cxx /s /b | s -@",
 				- another type of pipe "scite - <file", or
 				- a blocked pipe "findstring nothing | scite -"
-				in any case case, retry in a short bit
+				in any case, retry in a short bit
 			*/
 			if (::PeekNamedPipe(hStdIn, &bytebuffer, sizeof(bytebuffer), nullptr, nullptr, &unreadMessages) != 0) {
 				if (unreadMessages != 0) {
@@ -1749,17 +1742,6 @@ void SciTEWin::RestoreFromTray() {
 	::Sleep(100);
 	::Shell_NotifyIcon(NIM_DELETE, &nid);
 }
-
-#ifndef VK_OEM_2
-static const int VK_OEM_2=0xbf;
-static const int VK_OEM_3=0xc0;
-static const int VK_OEM_4=0xdb;
-static const int VK_OEM_5=0xdc;
-static const int VK_OEM_6=0xdd;
-#endif
-#ifndef VK_OEM_PLUS
-static const int VK_OEM_PLUS=0xbb;
-#endif
 
 inline bool KeyMatch(const std::string &sKey, int keyval, int modifiers) {
 	return SciTEKeys::MatchKeyCode(
@@ -2212,17 +2194,6 @@ uintptr_t SciTEWin::EventLoop() {
 	return msg.wParam;
 }
 
-#if defined(_MSC_VER) && defined(_PREFAST_)
-#pragma warning(disable: 28251)
-#endif
-
-#ifndef LOAD_LIBRARY_SEARCH_APPLICATION_DIR
-#define LOAD_LIBRARY_SEARCH_APPLICATION_DIR 0x200
-#endif
-#ifndef LOAD_LIBRARY_SEARCH_SYSTEM32
-#define LOAD_LIBRARY_SEARCH_SYSTEM32 0x800
-#endif
-
 static void RestrictDLLPath() noexcept {
 	// Try to limit the locations where DLLs will be loaded from to prevent binary planting.
 	// That is where a bad DLL is placed in the current directory or in the PATH.
@@ -2249,7 +2220,12 @@ static void RestrictDLLPath() noexcept {
 	}
 }
 
-int PASCAL WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
+#if defined(_MSC_VER) && defined(_PREFAST_)
+// Stop warning for WinMain. Microsoft headers have annotations and MinGW don't.
+#pragma warning(disable: 28251)
+#endif
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
 
 	RestrictDLLPath();
 

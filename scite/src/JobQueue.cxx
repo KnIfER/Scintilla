@@ -20,6 +20,8 @@
 #include <algorithm>
 #include <memory>
 #include <chrono>
+#include <atomic>
+#include <mutex>
 
 #include <sys/stat.h>
 
@@ -29,7 +31,6 @@
 #include "FilePath.h"
 #include "PropSetFile.h"
 #include "SciTE.h"
-#include "Mutex.h"
 #include "JobQueue.h"
 
 JobSubsystem SubsystemFromChar(char c) noexcept {
@@ -178,7 +179,7 @@ JobMode::JobMode(PropSetFile &props, int item, const char *fileNameExt) : jobTyp
 		flags |= jobGroupUndo;
 }
 
-Job::Job() : jobType(jobCLI), flags(0) {
+Job::Job() noexcept : jobType(jobCLI), flags(0) {
 	Clear();
 }
 
@@ -186,74 +187,65 @@ Job::Job(const std::string &command_, const FilePath &directory_, JobSubsystem j
 	: command(command_), directory(directory_), jobType(jobType_), input(input_), flags(flags_) {
 }
 
-void Job::Clear() {
-	command = "";
+void Job::Clear() noexcept {
+	command.clear();
 	directory.Init();
 	jobType = jobCLI;
-	input = "";
+	input.clear();
 	flags = 0;
 }
 
 
 JobQueue::JobQueue() : jobQueue(commandMax) {
-	mutex.reset(Mutex::Create());
 	clearBeforeExecute = false;
 	isBuilding = false;
 	isBuilt = false;
 	executing = false;
 	commandCurrent = 0;
 	jobUsesOutputPane = false;
-	cancelFlag = 0L;
+	cancelFlag = false;
 	timeCommands = false;
 }
 
 JobQueue::~JobQueue() {
-	mutex.reset();
-	mutex = 0;
 }
 
-bool JobQueue::TimeCommands() const {
-	Lock lock(mutex.get());
+bool JobQueue::TimeCommands() const noexcept {
 	return timeCommands;
 }
 
-bool JobQueue::ClearBeforeExecute() const {
-	Lock lock(mutex.get());
+bool JobQueue::ClearBeforeExecute() const noexcept {
 	return clearBeforeExecute;
 }
 
-bool JobQueue::ShowOutputPane() const {
-	Lock lock(mutex.get());
+bool JobQueue::ShowOutputPane() const noexcept {
 	return jobUsesOutputPane;
 }
 
-bool JobQueue::IsExecuting() const {
-	Lock lock(mutex.get());
+bool JobQueue::IsExecuting() const noexcept {
 	return executing;
 }
 
-void JobQueue::SetExecuting(bool state) {
-	Lock lock(mutex.get());
+void JobQueue::SetExecuting(bool state) noexcept {
 	executing = state;
 }
 
-bool JobQueue::HasCommandToRun() const {
+bool JobQueue::HasCommandToRun() const noexcept {
 	return commandCurrent > 0;
 }
 
-long JobQueue::SetCancelFlag(long value) {
-	Lock lock(mutex.get());
-	const long cancelFlagPrevious = cancelFlag;
+bool JobQueue::SetCancelFlag(bool value) {
+	std::lock_guard<std::mutex> guard(mutex);
+	const bool cancelFlagPrevious = cancelFlag;
 	cancelFlag = value;
 	return cancelFlagPrevious;
 }
 
-long JobQueue::Cancelled() {
-	Lock lock(mutex.get());
+bool JobQueue::Cancelled() noexcept {
 	return cancelFlag;
 }
 
-void JobQueue::ClearJobs() {
+void JobQueue::ClearJobs() noexcept {
 	for (Job &ic : jobQueue) {
 		ic.Clear();
 	}

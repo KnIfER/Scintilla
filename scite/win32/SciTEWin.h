@@ -11,9 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <fcntl.h>
 #include <stdarg.h>
-#include <sys/stat.h>
 
 #include <cstdint>
 
@@ -22,13 +20,19 @@
 #include <string_view>
 #include <vector>
 #include <deque>
-#include <set>
 #include <map>
+#include <set>
 #include <algorithm>
 #include <memory>
 #include <chrono>
 #include <sstream>
 #include <iomanip>
+#include <atomic>
+#include <mutex>
+
+#include <fcntl.h>
+
+#include <sys/stat.h>
 
 #ifdef __MINGW_H
 #define _WIN32_IE	0x0400
@@ -44,57 +48,29 @@
 #define WINVER 0x0501
 #endif
 #include <windows.h>
+#include <commctrl.h>
+#include <richedit.h>
 #include <windowsx.h>
-#if defined(DISABLE_THEMES) || (defined(_MSC_VER) && (_MSC_VER <= 1200))
+#if defined(DISABLE_THEMES)
 // Old compilers do not have Uxtheme.h
 typedef void *HTHEME;
 #else
 #include <uxtheme.h>
+#include <vsstyle.h>
+#include <vssym32.h>
+#define THEME_AVAILABLE
 #endif
-#include <commctrl.h>
-#include <richedit.h>
 #include <shlwapi.h>
 // need this header for SHBrowseForFolder
 #include <shlobj.h>
 
-#include <io.h>
-#include <process.h>
-#include <mmsystem.h>
-#include <commctrl.h>
-
-#if defined(DTBG_CLIPRECT) && !defined(DISABLE_THEMES)
-#define THEME_AVAILABLE
-#endif
-
-// Since Vsstyle.h and Vssym32.h are not available from all compilers just define the used symbols
-#define CBS_NORMAL 1
-#define CBS_HOT 2
-#define CBS_PUSHED 3
-#define WP_SMALLCLOSEBUTTON 19
-#define TS_NORMAL 1
-#define TS_HOT 2
-#define TS_PRESSED 3
-#define TS_CHECKED 5
-#define TS_HOTCHECKED 6
-#define TP_BUTTON 1
-#ifndef DFCS_HOT
-#define DFCS_HOT 1000
-#endif
-
-#ifndef WM_UPDATEUISTATE
-#define WM_UPDATEUISTATE 0x0128
-#endif
-
-#ifndef WM_DPICHANGED
-#define WM_DPICHANGED 0x02E0
-#endif
-
-#include "Scintilla.h"
 #include "ILoader.h"
 
 #include "ScintillaTypes.h"
 #include "ScintillaMessages.h"
 #include "ScintillaCall.h"
+
+#include "Scintilla.h"
 
 #include "GUI.h"
 #include "ScintillaWindow.h"
@@ -107,22 +83,21 @@ typedef void *HTHEME;
 #include "StyleWriter.h"
 #include "Extender.h"
 #include "SciTE.h"
-#include "Mutex.h"
 #include "JobQueue.h"
 #include "Cookie.h"
 #include "Worker.h"
 #include "FileWorker.h"
 #include "MatchMarker.h"
 #include "SciTEBase.h"
-#include "SciTEKeys.h"
 #include "UniqueInstance.h"
 #include "StripDefinition.h"
 #include "Strips.h"
+#include "SciTEKeys.h"
 
-const int SCITE_TRAY = WM_APP + 0;
-const int SCITE_DROP = WM_APP + 1;
-const int SCITE_WORKER = WM_APP + 2;
-const int SCITE_SHOWOUTPUT = WM_APP + 3;
+constexpr int SCITE_TRAY = WM_APP + 0;
+constexpr int SCITE_DROP = WM_APP + 1;
+constexpr int SCITE_WORKER = WM_APP + 2;
+constexpr int SCITE_SHOWOUTPUT = WM_APP + 3;
 
 enum {
 	WORK_EXECUTE = WORK_PLATFORM + 1
@@ -133,7 +108,7 @@ class SciTEWin;
 class CommandWorker : public Worker {
 public:
 	SciTEWin *pSciTE;
-	int icmd;
+	size_t icmd;
 	SA::Position originalEnd;
 	int exitStatus;
 	GUI::ElapsedTime commandTime;
@@ -401,7 +376,6 @@ public:
 	void StopExecute() override;
 	void AddCommand(const std::string &cmd, const std::string &dir, JobSubsystem jobType, const std::string &input = "", int flags = 0) override;
 
-	bool PerformOnNewThread(Worker *pWorker) override;
 	void PostOnMainThread(int cmd, Worker *pWorker) override;
 	void WorkerCommand(int cmd, Worker *pWorker) override;
 

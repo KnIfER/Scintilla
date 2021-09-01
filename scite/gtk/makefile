@@ -23,12 +23,13 @@ CC = clang
 BASE_FLAGS += -fsanitize=$(SANITIZE)
 WARNINGS += -Wno-deprecated-register
 WARNINGS += -Wno-empty-body
-WARNINGS += -Wno-string-plus-int
 else
 WARNINGS += -Wno-misleading-indentation
 endif
 
 GTK_VERSION = $(if $(GTK3),gtk+-3.0,gtk+-2.0)
+
+PYTHON = $(if $(windir),pyw,python3)
 
 # For the Gnome desktop stuff to work, prefix must point to where Gnome thinks it is.
 CONFIGFLAGS:=$(shell pkg-config --cflags $(GTK_VERSION))
@@ -104,7 +105,7 @@ analyze:
 	clang --analyze --std=c++17 $(DEFINES) $(INCLUDES) $(WARNINGS) $(CONFIGFLAGS) $(BASE_FLAGS) $(CXXFLAGS) $(srcdir)/*.cxx $(srcdir)/../src/*.cxx
 
 depend deps.mak:
-	python AppDepGen.py
+	$(PYTHON) AppDepGen.py
 
 # make should be run in ../../scintilla/gtk to compile all the lexers.
 COMPLIB=$(SCINTILLA_DIR)/bin/scintilla.a
@@ -141,7 +142,7 @@ SRC_OBJS = \
 	StyleWriter.o \
 	Utf8_16.o
 
-$(PROG): SciTEGTK.o GUIGTK.o Widget.o GTKMutex.o DirectorExtension.o $(SRC_OBJS) $(COMPLIB) $(LUA_OBJS)
+$(PROG): SciTEGTK.o GUIGTK.o Widget.o DirectorExtension.o $(SRC_OBJS) $(COMPLIB) $(LUA_OBJS)
 	$(CXX) $(BASE_FLAGS) -rdynamic -Wl,--as-needed -Wl,--version-script $(srcdir)/lua.vers $^ -o $@ $(CONFIGLIB) $(LIBS) $(LDLIBS)
 
 # Automatically generate header dependencies with "make deps"

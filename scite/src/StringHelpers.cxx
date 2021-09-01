@@ -9,6 +9,7 @@
 #include <cstring>
 #include <cstdio>
 
+#include <stdexcept>
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -86,16 +87,41 @@ std::string StdStringFromDouble(double d, int precision) {
 	return std::string(number);
 }
 
-static char LowerCaseAZChar(char c) noexcept {
-	if (c >= 'A' && c <= 'Z') {
-		return c - 'A' + 'a';
-	} else {
-		return c;
+int IntegerFromString(const std::string &val, int defaultValue) {
+	try {
+		if (val.length()) {
+			return std::stoi(val);
+		}
+	} catch (std::logic_error &) {
+		// Ignore bad values, either non-numeric or out of range numeric
 	}
+	return defaultValue;
+}
+
+intptr_t IntPtrFromString(const std::string &val, intptr_t defaultValue) {
+	try {
+		if (val.length()) {
+			return static_cast<intptr_t>(std::stoll(val));
+		}
+	} catch (std::logic_error &) {
+		// Ignore bad values, either non-numeric or out of range numeric
+	}
+	return defaultValue;
+}
+
+long long LongLongFromString(const std::string &val, long long defaultValue) {
+	try {
+		if (val.length()) {
+			return std::stoll(val);
+		}
+	} catch (std::logic_error &) {
+		// Ignore bad values, either non-numeric or out of range numeric
+	}
+	return defaultValue;
 }
 
 void LowerCaseAZ(std::string &s) {
-	std::transform(s.begin(), s.end(), s.begin(), LowerCaseAZChar);
+	std::transform(s.begin(), s.end(), s.begin(), MakeLowerCase);
 }
 
 intptr_t IntegerFromText(const char *s) noexcept {
@@ -119,6 +145,18 @@ int CompareNoCase(const char *a, const char *b) noexcept {
 
 bool EqualCaseInsensitive(const char *a, const char *b) noexcept {
 	return 0 == CompareNoCase(a, b);
+}
+
+bool EqualCaseInsensitive(std::string_view a, std::string_view b) noexcept {
+	if (a.length() != b.length()) {
+		return false;
+	}
+	for (size_t i = 0; i < a.length(); i++) {
+		if (MakeUpperCase(a[i]) != MakeUpperCase(b[i])) {
+			return false;
+		}
+	}
+	return true;
 }
 
 bool isprefix(const char *target, const char *prefix) noexcept {
@@ -323,7 +361,7 @@ std::string UnSlashString(const char *s) {
 
 /**
  * Convert C style \0oo into their indicated characters.
- * This is used to get control characters into the regular expresion engine.
+ * This is used to get control characters into the regular expression engine.
  */
 static unsigned int UnSlashLowOctal(char *s) noexcept {
 	const char *sStart = s;

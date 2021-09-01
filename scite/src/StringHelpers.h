@@ -28,6 +28,10 @@ std::string StdStringFromInteger(int i);
 std::string StdStringFromSizeT(size_t i);
 std::string StdStringFromDouble(double d, int precision);
 
+int IntegerFromString(const std::string &val, int defaultValue);
+intptr_t IntPtrFromString(const std::string &val, intptr_t defaultValue);
+long long LongLongFromString(const std::string &val, long long defaultValue);
+
 // Basic case lowering that converts A-Z to a-z.
 // Does not handle non-ASCII characters.
 void LowerCaseAZ(std::string &s);
@@ -36,7 +40,15 @@ constexpr char MakeUpperCase(char ch) noexcept {
 	if (ch < 'a' || ch > 'z')
 		return ch;
 	else
-		return static_cast<char>(ch - 'a' + 'A');
+		return ch - 'a' + 'A';
+}
+
+constexpr char MakeLowerCase(char c) noexcept {
+	if (c >= 'A' && c <= 'Z') {
+		return c - 'A' + 'a';
+	} else {
+		return c;
+	}
 }
 
 constexpr bool IsASCII(int ch) noexcept {
@@ -99,6 +111,7 @@ void StringCopy(T(&dest)[count], const T *source) noexcept {
 
 int CompareNoCase(const char *a, const char *b) noexcept;
 bool EqualCaseInsensitive(const char *a, const char *b) noexcept;
+bool EqualCaseInsensitive(std::string_view a, std::string_view b) noexcept;
 bool isprefix(const char *target, const char *prefix) noexcept;
 
 constexpr const char *UTF8BOM = "\xef\xbb\xbf";

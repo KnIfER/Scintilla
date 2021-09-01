@@ -6,6 +6,13 @@
 @rem Assumes environment set up so gcc, MSVC amd cppcheck can be called.
 @rem
 @cd ..\..
+@rem Check that Scintilla and Lexilla have the same version number
+@for /F %%i IN (scintilla\version.txt) do set "SCINTILLA_VERSION=%%i"
+@for /F %%i IN (scintilla\lexilla\version.txt) do set "LEXILLA_VERSION=%%i"
+@if [%SCINTILLA_VERSION%]==[%LEXILLA_VERSION%] goto VERSIONS_MATCH
+@echo checkbuilds.bat:12: Scintilla and Lexilla have different versions %SCINTILLA_VERSION%, %LEXILLA_VERSION%
+goto CLEANUP
+:VERSIONS_MATCH
 @rem
 rem ************************************************************
 rem Target 1: basic unit tests with gcc
@@ -86,6 +93,7 @@ rem ************************************************************
 rem Target 6: GTK+ version using gcc on scintilla\gtk\makefile
 @call scite\scripts\clearboth
 @pushd scintilla\gtk
+set PATH=c:\opt\gtk\bin;%PATH%
 rem -Wno-parentheses is temporary for GTK+ header gtkfilechooserbutton.h
 mingw32-make -j CXXFLAGS=-Wno-parentheses
 @if ERRORLEVEL 2 goto ERROR
@@ -94,6 +102,14 @@ mingw32-make -j CXXFLAGS=-Wno-parentheses
 rem ************************************************************
 rem Target 7: Visual C++ 64 bit
 @call scite\scripts\clearboth
+@pushd scintilla\lexilla\src
+msbuild /verbosity:minimal /p:Platform=x64 /p:Configuration=Release Lexilla.vcxproj
+@if ERRORLEVEL 2 goto ERROR
+@popd
+@pushd scintilla\win32
+msbuild /verbosity:minimal /p:Platform=x64 /p:Configuration=Release Scintilla.vcxproj
+@if ERRORLEVEL 2 goto ERROR
+@popd
 @pushd scintilla\win32
 msbuild /verbosity:minimal /p:Platform=x64 /p:Configuration=Release SciLexer.vcxproj
 @if ERRORLEVEL 2 goto ERROR
@@ -137,7 +153,7 @@ mingw32-make CLANG=1 -j
 rem ************************************************************
 rem Target 10: qt with msvc
 @call scite\scripts\clearboth
-@set QBIN=D:\Qt\Qt5.12.0\5.12.0\msvc2017_64\bin
+@set QBIN=C:\Qt\5.14.2\msvc2017_64\bin
 @pushd scintilla\qt\ScintillaEditBase
 %QBIN%\qmake
 nmake
@@ -145,7 +161,7 @@ nmake distclean
 @if ERRORLEVEL 2 goto ERROR
 @popd
 @pushd scintilla\qt\ScintillaEdit
-python WidgetGen.py
+pyw WidgetGen.py
 %QBIN%\qmake
 nmake
 nmake distclean
@@ -161,7 +177,7 @@ cppcheck -j 8 --enable=all --suppressions-list=scite/cppcheck.suppress --max-con
 rem ************************************************************
 rem Target 12: header order check
 @pushd scintilla\scripts
-python HeaderCheck.py
+pyw HeaderCheck.py
 @popd
 @rem
 rem Finished
@@ -170,5 +186,5 @@ goto CLEANUP
 :ERROR
 @echo checkbuilds.bat:1: Failed %ERRORLEVEL%
 :CLEANUP
-set SAVE_PATH=
-set SAVE_INCLUDE=
+@set SAVE_PATH=
+@set SAVE_INCLUDE=

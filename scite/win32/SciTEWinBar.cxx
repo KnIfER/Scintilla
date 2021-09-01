@@ -13,7 +13,7 @@
 void SciTEWin::SetFileProperties(
 	PropSetFile &ps) {			///< Property set to update.
 
-	const int TEMP_LEN = 100;
+	constexpr int TEMP_LEN = 100;
 	char temp[TEMP_LEN] = "";
 	HANDLE hf = ::CreateFileW(filePath.AsInternal(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (hf != INVALID_HANDLE_VALUE) {
@@ -603,14 +603,6 @@ void SciTEWin::LocaliseDialog(HWND wDialog) {
 		wChild = GetNextSibling(wChild);
 	}
 }
-
-// Mingw headers do not have this:
-#ifndef TBSTYLE_FLAT
-#define TBSTYLE_FLAT 0x0800
-#endif
-#ifndef TB_LOADIMAGES
-#define TB_LOADIMAGES (WM_USER + 50)
-#endif
 
 struct BarButton {
 	int id;

@@ -1,4 +1,4 @@
-# Created by AppDepGen.py. To recreate, run 'python AppDepGen.py'.
+# Created by AppDepGen.py. To recreate, run AppDepGen.py.
 DirectorExtension.obj: \
 	DirectorExtension.cxx \
 	../../scintilla/include/ILexer.h \
@@ -14,7 +14,6 @@ DirectorExtension.obj: \
 	../src/PropSetFile.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -28,12 +27,12 @@ GUIWin.obj: \
 SciTEWin.obj: \
 	SciTEWin.cxx \
 	SciTEWin.h \
-	../../scintilla/include/Scintilla.h \
-	../../scintilla/include/Sci_Position.h \
 	../../scintilla/include/ILoader.h \
+	../../scintilla/include/Sci_Position.h \
 	../src/ScintillaTypes.h \
 	../src/ScintillaMessages.h \
 	../src/ScintillaCall.h \
+	../../scintilla/include/Scintilla.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
 	../src/StringList.h \
@@ -44,29 +43,28 @@ SciTEWin.obj: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
 	../src/FileWorker.h \
 	../src/MatchMarker.h \
 	../src/SciTEBase.h \
-	../src/SciTEKeys.h \
 	UniqueInstance.h \
 	../src/StripDefinition.h \
 	Strips.h \
+	../src/SciTEKeys.h \
 	../src/MultiplexExtension.h \
 	DirectorExtension.h \
 	../src/LuaExtension.h
 Sc1.obj: \
 	SciTEWin.cxx \
 	SciTEWin.h \
-	../../scintilla/include/Scintilla.h \
-	../../scintilla/include/Sci_Position.h \
 	../../scintilla/include/ILoader.h \
+	../../scintilla/include/Sci_Position.h \
 	../src/ScintillaTypes.h \
 	../src/ScintillaMessages.h \
 	../src/ScintillaCall.h \
+	../../scintilla/include/Scintilla.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
 	../src/StringList.h \
@@ -77,29 +75,28 @@ Sc1.obj: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
 	../src/FileWorker.h \
 	../src/MatchMarker.h \
 	../src/SciTEBase.h \
-	../src/SciTEKeys.h \
 	UniqueInstance.h \
 	../src/StripDefinition.h \
 	Strips.h \
+	../src/SciTEKeys.h \
 	../src/MultiplexExtension.h \
 	DirectorExtension.h \
 	../src/LuaExtension.h
 SciTEWinBar.obj: \
 	SciTEWinBar.cxx \
 	SciTEWin.h \
-	../../scintilla/include/Scintilla.h \
-	../../scintilla/include/Sci_Position.h \
 	../../scintilla/include/ILoader.h \
+	../../scintilla/include/Sci_Position.h \
 	../src/ScintillaTypes.h \
 	../src/ScintillaMessages.h \
 	../src/ScintillaCall.h \
+	../../scintilla/include/Scintilla.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
 	../src/StringList.h \
@@ -110,26 +107,25 @@ SciTEWinBar.obj: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
 	../src/FileWorker.h \
 	../src/MatchMarker.h \
 	../src/SciTEBase.h \
-	../src/SciTEKeys.h \
 	UniqueInstance.h \
 	../src/StripDefinition.h \
-	Strips.h
+	Strips.h \
+	../src/SciTEKeys.h
 SciTEWinDlg.obj: \
 	SciTEWinDlg.cxx \
 	SciTEWin.h \
-	../../scintilla/include/Scintilla.h \
-	../../scintilla/include/Sci_Position.h \
 	../../scintilla/include/ILoader.h \
+	../../scintilla/include/Sci_Position.h \
 	../src/ScintillaTypes.h \
 	../src/ScintillaMessages.h \
 	../src/ScintillaCall.h \
+	../../scintilla/include/Scintilla.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
 	../src/StringList.h \
@@ -140,26 +136,25 @@ SciTEWinDlg.obj: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
 	../src/FileWorker.h \
 	../src/MatchMarker.h \
 	../src/SciTEBase.h \
-	../src/SciTEKeys.h \
 	UniqueInstance.h \
 	../src/StripDefinition.h \
-	Strips.h
+	Strips.h \
+	../src/SciTEKeys.h
 Strips.obj: \
 	Strips.cxx \
 	SciTEWin.h \
-	../../scintilla/include/Scintilla.h \
-	../../scintilla/include/Sci_Position.h \
 	../../scintilla/include/ILoader.h \
+	../../scintilla/include/Sci_Position.h \
 	../src/ScintillaTypes.h \
 	../src/ScintillaMessages.h \
 	../src/ScintillaCall.h \
+	../../scintilla/include/Scintilla.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
 	../src/StringList.h \
@@ -170,26 +165,25 @@ Strips.obj: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
 	../src/FileWorker.h \
 	../src/MatchMarker.h \
 	../src/SciTEBase.h \
-	../src/SciTEKeys.h \
 	UniqueInstance.h \
 	../src/StripDefinition.h \
-	Strips.h
+	Strips.h \
+	../src/SciTEKeys.h
 UniqueInstance.obj: \
 	UniqueInstance.cxx \
 	SciTEWin.h \
-	../../scintilla/include/Scintilla.h \
-	../../scintilla/include/Sci_Position.h \
 	../../scintilla/include/ILoader.h \
+	../../scintilla/include/Sci_Position.h \
 	../src/ScintillaTypes.h \
 	../src/ScintillaMessages.h \
 	../src/ScintillaCall.h \
+	../../scintilla/include/Scintilla.h \
 	../src/GUI.h \
 	../src/ScintillaWindow.h \
 	../src/StringList.h \
@@ -200,20 +194,16 @@ UniqueInstance.obj: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
 	../src/FileWorker.h \
 	../src/MatchMarker.h \
 	../src/SciTEBase.h \
-	../src/SciTEKeys.h \
 	UniqueInstance.h \
 	../src/StripDefinition.h \
-	Strips.h
-WinMutex.obj: \
-	WinMutex.cxx \
-	../src/Mutex.h
+	Strips.h \
+	../src/SciTEKeys.h
 Cookie.obj: \
 	../src/Cookie.cxx \
 	../src/GUI.h \
@@ -235,7 +225,6 @@ Credits.obj: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -263,7 +252,6 @@ ExportHTML.obj: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -285,7 +273,6 @@ ExportPDF.obj: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -307,7 +294,6 @@ ExportRTF.obj: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -329,7 +315,6 @@ ExportTEX.obj: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -351,7 +336,6 @@ ExportXML.obj: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -367,13 +351,14 @@ FileWorker.obj: \
 	../../scintilla/include/Sci_Position.h \
 	../src/GUI.h \
 	../src/FilePath.h \
-	../src/Mutex.h \
 	../src/Cookie.h \
 	../src/Worker.h \
 	../src/FileWorker.h \
 	../src/Utf8_16.h
 IFaceTable.obj: \
 	../src/IFaceTable.cxx \
+	../src/GUI.h \
+	../src/StringHelpers.h \
 	../src/IFaceTable.h
 JobQueue.obj: \
 	../src/JobQueue.cxx \
@@ -382,7 +367,6 @@ JobQueue.obj: \
 	../src/FilePath.h \
 	../src/PropSetFile.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h
 LexillaLibrary.obj: \
 	../src/LexillaLibrary.cxx \
@@ -460,7 +444,6 @@ SciTEBase.obj: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -485,7 +468,6 @@ SciTEBuffers.obj: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -508,7 +490,6 @@ SciTEIO.obj: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -536,7 +517,6 @@ SciTEProps.obj: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \

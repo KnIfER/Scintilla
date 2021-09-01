@@ -21,6 +21,8 @@
 #include <algorithm>
 #include <memory>
 #include <chrono>
+#include <atomic>
+#include <mutex>
 
 #include <fcntl.h>
 
@@ -55,7 +57,6 @@ const GUI::gui_char menuAccessIndicator[] = GUI_TEXT("&");
 #include "StyleWriter.h"
 #include "Extender.h"
 #include "SciTE.h"
-#include "Mutex.h"
 #include "JobQueue.h"
 #include "Cookie.h"
 #include "Worker.h"
@@ -490,6 +491,7 @@ static const char *propertiesToForward[] = {
 	"fold.verilog.flags",
 	"fold.xml.at.tag.open",
 	"html.tags.case.sensitive",
+	"lexer.as.comment.character",
 	"lexer.asm.comment.delimiter",
 	"lexer.baan.styling.within.preprocessor",
 	"lexer.caml.magic",
@@ -931,7 +933,7 @@ void SciTEBase::ReadProperties() {
 		else	// Have to show selection somehow
 			CallChildren(SA::Message::SetSelBack, 1, ColourRGB(0xC0, 0xC0, 0xC0));
 	}
-	const int NoAlpha = static_cast<int>(SA::Alpha::NoAlpha);
+	constexpr int NoAlpha = static_cast<int>(SA::Alpha::NoAlpha);
 	const int selectionAlpha = props.GetInt("selection.alpha", NoAlpha);
 	CallChildren(SA::Message::SetSelAlpha, selectionAlpha);
 
@@ -1232,7 +1234,7 @@ void SciTEBase::ReadProperties() {
 	wEditor.SetMarginMaskN(2, SA::MaskFolders);
 	wEditor.SetMarginSensitiveN(2, true);
 
-	// Define foreground (outline) and background (fill) color of folds
+	// Define foreground (outline) and background (fill) colour of folds
 	const int foldSymbols = props.GetInt("fold.symbols");
 	std::string foldFore = props.GetExpandedString("fold.fore");
 	if (foldFore.length() == 0) {

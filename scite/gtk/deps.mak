@@ -1,4 +1,4 @@
-# Created by AppDepGen.py. To recreate, run 'python AppDepGen.py'.
+# Created by AppDepGen.py. To recreate, run AppDepGen.py.
 DirectorExtension.o: \
 	DirectorExtension.cxx \
 	../../scintilla/include/ILexer.h \
@@ -16,16 +16,12 @@ DirectorExtension.o: \
 	../src/PropSetFile.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
 	../src/MatchMarker.h \
 	../src/SciTEBase.h \
 	DirectorExtension.h
-GTKMutex.o: \
-	GTKMutex.cxx \
-	../src/Mutex.h
 GUIGTK.o: \
 	GUIGTK.cxx \
 	../../scintilla/include/Scintilla.h \
@@ -50,7 +46,6 @@ SciTEGTK.o: \
 	../src/PropSetFile.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	pixmapsGNOME.h \
 	SciIcon.h \
@@ -92,7 +87,6 @@ Credits.o: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -120,7 +114,6 @@ ExportHTML.o: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -142,7 +135,6 @@ ExportPDF.o: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -164,7 +156,6 @@ ExportRTF.o: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -186,7 +177,6 @@ ExportTEX.o: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -208,7 +198,6 @@ ExportXML.o: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -224,13 +213,14 @@ FileWorker.o: \
 	../../scintilla/include/Sci_Position.h \
 	../src/GUI.h \
 	../src/FilePath.h \
-	../src/Mutex.h \
 	../src/Cookie.h \
 	../src/Worker.h \
 	../src/FileWorker.h \
 	../src/Utf8_16.h
 IFaceTable.o: \
 	../src/IFaceTable.cxx \
+	../src/GUI.h \
+	../src/StringHelpers.h \
 	../src/IFaceTable.h
 JobQueue.o: \
 	../src/JobQueue.cxx \
@@ -239,7 +229,6 @@ JobQueue.o: \
 	../src/FilePath.h \
 	../src/PropSetFile.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h
 LexillaLibrary.o: \
 	../src/LexillaLibrary.cxx \
@@ -316,7 +305,6 @@ SciTEBase.o: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -341,7 +329,6 @@ SciTEBuffers.o: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -364,7 +351,6 @@ SciTEIO.o: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \
@@ -392,7 +378,6 @@ SciTEProps.o: \
 	../src/StyleWriter.h \
 	../src/Extender.h \
 	../src/SciTE.h \
-	../src/Mutex.h \
 	../src/JobQueue.h \
 	../src/Cookie.h \
 	../src/Worker.h \

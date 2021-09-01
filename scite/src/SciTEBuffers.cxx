@@ -21,6 +21,8 @@
 #include <algorithm>
 #include <memory>
 #include <chrono>
+#include <atomic>
+#include <mutex>
 
 #include "ILoader.h"
 
@@ -40,7 +42,6 @@
 #include "StyleWriter.h"
 #include "Extender.h"
 #include "SciTE.h"
-#include "Mutex.h"
 #include "JobQueue.h"
 #include "Cookie.h"
 #include "Worker.h"
@@ -1118,7 +1119,7 @@ void SciTEBase::EndStackedTabbing() {
 
 static void EscapeFilePathsForMenu(GUI::gui_string &path) {
 	// Escape '&' characters in path, since they are interpreted in
-	// menues.
+	// menus.
 	Substitute(path, GUI_TEXT("&"), GUI_TEXT("&&"));
 #if defined(GTK)
 	GUI::gui_string homeDirectory = getenv("HOME");
@@ -1139,7 +1140,7 @@ void SciTEBase::SetBuffersMenu() {
 		DestroyMenuItem(menuBuffers, IDM_BUFFER + pos);
 	}
 	if (buffers.size() > 1) {
-		const int menuStart = 4;
+		constexpr int menuStart = 4;
 		SetMenuItem(menuBuffers, menuStart, IDM_BUFFERSEP, GUI_TEXT(""));
 		for (pos = 0; pos < buffers.lengthVisible; pos++) {
 			const int itemID = bufferCmdID + pos;
@@ -1497,10 +1498,6 @@ void SciTEBase::ToolsMenu(int item) {
 	}
 }
 
-inline bool isdigitchar(int ch) noexcept {
-	return (ch >= '0') && (ch <= '9');
-}
-
 static SA::Line DecodeMessage(const char *cdoc, std::string &sourcePath, int format, SA::Position &column) {
 	sourcePath.clear();
 	column = -1; // default to not detected
@@ -1515,7 +1512,7 @@ static SA::Line DecodeMessage(const char *cdoc, std::string &sourcePath, int for
 					const ptrdiff_t length = endPath - startPath;
 					sourcePath.assign(startPath, length);
 					endPath++;
-					while (*endPath && !isdigitchar(*endPath)) {
+					while (*endPath && !IsADigit(*endPath)) {
 						endPath++;
 					}
 					const SA::Line sourceNumber = IntegerFromText(endPath) - 1;
@@ -1537,13 +1534,13 @@ static SA::Line DecodeMessage(const char *cdoc, std::string &sourcePath, int for
 			if (cdoc[0] == '\t')
 				++cdoc;
 			for (int i = 0; cdoc[i]; i++) {
-				if (cdoc[i] == ':' && (isdigitchar(cdoc[i + 1]) || (cdoc[i + 1] == '-'))) {
+				if (cdoc[i] == ':' && (IsADigit(cdoc[i + 1]) || (cdoc[i + 1] == '-'))) {
 					const SA::Line sourceLine = IntegerFromText(cdoc + i + 1);
 					sourcePath.assign(cdoc, i);
 					i += 2;
-					while (isdigitchar(cdoc[i]))
+					while (IsADigit(cdoc[i]))
 						++i;
-					if (cdoc[i] == ':' && isdigitchar(cdoc[i + 1]))
+					if (cdoc[i] == ':' && IsADigit(cdoc[i + 1]))
 						column = IntegerFromText(cdoc + i + 1) - 1;
 					// Some tools show whole file errors as occurring at line 0
 					return (sourceLine > 0) ? sourceLine - 1 : 0;
@@ -1559,7 +1556,7 @@ static SA::Line DecodeMessage(const char *cdoc, std::string &sourcePath, int for
 			}
 			const char *endPath = strchr(start, '(');
 			if (endPath) {
-				if (!isdigitchar(endPath[1])) {
+				if (!IsADigit(endPath[1])) {
 					// This handles the common case of include files in the C:\Program Files (x86)\ directory
 					endPath = strchr(endPath + 1, '(');
 				}
@@ -1668,7 +1665,7 @@ static SA::Line DecodeMessage(const char *cdoc, std::string &sourcePath, int for
 
 	case SCE_ERR_CTAG: {
 			for (SA::Position i = 0; cdoc[i]; i++) {
-				if ((isdigitchar(cdoc[i + 1]) || (cdoc[i + 1] == '/' && cdoc[i + 2] == '^')) && cdoc[i] == '\t') {
+				if ((IsADigit(cdoc[i + 1]) || (cdoc[i + 1] == '/' && cdoc[i + 2] == '^')) && cdoc[i] == '\t') {
 					SA::Position j = i - 1;
 					while (j > 0 && ! strchr("\t\n\r \"$%'*,;<>?[]^`{|}", cdoc[j])) {
 						j--;

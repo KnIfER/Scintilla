@@ -17,6 +17,8 @@ else
 	normalize = $(subst /,\,$1)
 endif
 
+PYTHON = $(if $(windir),pyw,python3)
+
 WARNINGS += -Wall -pedantic -Wextra
 
 ifdef CLANG
@@ -31,7 +33,6 @@ DEFINES += -D_CRT_SECURE_NO_DEPRECATE
 BASE_FLAGS += -fsanitize=$(SANITIZE)
 # Clang doesn't like omitting braces in array initialization but they just add noise,
 WARNINGS += -Wno-deprecated-register
-WARNINGS += -Wno-string-plus-int
 WARNINGS += -Wno-missing-braces
 WARNINGS += -Wno-language-extension-token
 else
@@ -150,8 +151,7 @@ SHAREDOBJS=\
 	StyleDefinition.o \
 	StyleWriter.o \
 	UniqueInstance.o \
-	Utf8_16.o \
-	WinMutex.o
+	Utf8_16.o
 
 OTHER_OBJS = $(SHAREDOBJS) $(LUA_OBJS) SciTERes.o SciTEWin.o
 
@@ -171,7 +171,7 @@ analyze:
 	clang --analyze $(DEFINES) $(INCLUDES) $(WARNINGS) $(CPPFLAGS) $(BASE_FLAGS) $(CXXFLAGS) *.cxx ../src/*.cxx
 
 depend deps.mak:
-	python AppDepGen.py
+	$(PYTHON) AppDepGen.py
 
 ../bin/%.dll:	../../scintilla/bin/%.dll
 	$(COPY) $(call normalize,$< $(@D))

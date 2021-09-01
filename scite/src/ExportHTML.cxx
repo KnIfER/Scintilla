@@ -20,6 +20,8 @@
 #include <memory>
 #include <chrono>
 #include <sstream>
+#include <atomic>
+#include <mutex>
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -40,7 +42,6 @@
 #include "StyleWriter.h"
 #include "Extender.h"
 #include "SciTE.h"
-#include "Mutex.h"
 #include "JobQueue.h"
 #include "Cookie.h"
 #include "Worker.h"
@@ -64,7 +65,7 @@ void SciTEBase::SaveToHTML(const FilePath &saveName) {
 	const SA::Position lengthDoc = LengthDocument();
 	TextReader acc(wEditor);
 
-	const int StyleLastPredefined = static_cast<int>(SA::StylesCommon::LastPredefined);
+	constexpr int StyleLastPredefined = static_cast<int>(SA::StylesCommon::LastPredefined);
 
 	bool styleIsUsed[StyleMax + 1] = {};
 	if (onlyStylesUsed) {

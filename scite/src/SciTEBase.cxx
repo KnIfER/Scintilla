@@ -22,6 +22,9 @@
 #include <algorithm>
 #include <memory>
 #include <chrono>
+#include <atomic>
+#include <mutex>
+#include <thread>
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -45,7 +48,6 @@
 #include "StyleWriter.h"
 #include "Extender.h"
 #include "SciTE.h"
-#include "Mutex.h"
 #include "JobQueue.h"
 
 #include "Cookie.h"
@@ -216,6 +218,18 @@ SciTEBase::~SciTEBase() {
 
 void SciTEBase::Finalise() {
 	TimerEnd(timerAutoSave);
+}
+
+bool SciTEBase::PerformOnNewThread(Worker *pWorker) {
+	try {
+		std::thread thread([pWorker] {
+			pWorker->Execute();
+		});
+		thread.detach();
+		return true;
+	} catch (std::system_error &) {
+		return false;
+	}
 }
 
 void SciTEBase::WorkerCommand(int cmd, Worker *pWorker) {
@@ -1297,9 +1311,8 @@ void SciTEBase::Execute() {
 	props.Set("CurrentMessage", "");
 	dirNameForExecute = FilePath();
 	bool displayParameterDialog = false;
-	int ic;
 	parameterisedCommand = "";
-	for (ic = 0; ic < jobQueue.commandMax; ic++) {
+	for (size_t ic = 0; ic < jobQueue.commandMax; ic++) {
 		if (StartsWith(jobQueue.jobQueue[ic].command, "*")) {
 			displayParameterDialog = true;
 			jobQueue.jobQueue[ic].command.erase(0, 1);
@@ -1317,7 +1330,7 @@ void SciTEBase::Execute() {
 	} else {
 		ParamGrab();
 	}
-	for (ic = 0; ic < jobQueue.commandMax; ic++) {
+	for (size_t ic = 0; ic < jobQueue.commandMax; ic++) {
 		if (jobQueue.jobQueue[ic].jobType != jobGrep) {
 			jobQueue.jobQueue[ic].command = props.Expand(jobQueue.jobQueue[ic].command);
 		}
@@ -1334,7 +1347,7 @@ void SciTEBase::Execute() {
 		SetOutputVisibility(true);
 	}
 
-	jobQueue.cancelFlag = 0L;
+	jobQueue.SetCancelFlag(false);
 	if (jobQueue.HasCommandToRun()) {
 		jobQueue.SetExecuting(true);
 	}
@@ -1615,7 +1628,7 @@ void SciTEBase::ContinueCallTip() {
 		endHighlight = unslashedEndHighlight;
 	}
 
-	wEditor.CallTipSetHlt(static_cast<int>(startHighlight), static_cast<int>(endHighlight));
+	wEditor.CallTipSetHlt(startHighlight, endHighlight);
 }
 
 std::string SciTEBase::EliminateDuplicateWords(const std::string &words) {
@@ -1724,7 +1737,7 @@ bool SciTEBase::StartAutoCompleteWord(bool onlyOneWord) {
 	}
 	const size_t length = wordsNear.length();
 	if ((length > 2) && (!onlyOneWord || (minWordLength > rootLength))) {
-		// Protect spaces by temporrily transforming to \001
+		// Protect spaces by temporarily transforming to \001
 		std::replace(wordsNear.begin(), wordsNear.end(), ' ', '\001');
 		StringList wl(true);
 		wl.Set(wordsNear.c_str());
@@ -2381,7 +2394,7 @@ void SciTEBase::ConvertIndentation(int tabSize, int useTabs) {
 		const SA::Position lineStart = wEditor.LineStart(line);
 		const int indent = GetLineIndentation(line);
 		const SA::Position indentPos = GetLineIndentPosition(line);
-		const int maxIndentation = 1000;
+		constexpr int maxIndentation = 1000;
 		if (indent < maxIndentation) {
 			std::string indentationNow = wEditor.StringOfRange(SA::Range(lineStart, indentPos));
 			std::string indentationWanted = CreateIndentation(indent, tabSize, !useTabs);
@@ -3828,7 +3841,7 @@ void SciTEBase::UpdateUI(const SCNotification *notification) {
 	const SA::Update updated = static_cast<SA::Update>(notification->updated);
 	if (static_cast<int>(updated & (SA::Update::Selection | SA::Update::Content))) {
 		if ((notification->nmhdr.idFrom == IDM_SRCWIN) == (pwFocussed == &wEditor)) {
-			// Obly highlight focussed pane.
+			// Only highlight focused pane.
 			if ((updated & SA::Update::Selection) == SA::Update::Selection) {
 				currentWordHighlight.statesOfDelay = currentWordHighlight.noDelay; // Selection has just been updated, so delay is disabled.
 				currentWordHighlight.textHasChanged = false;
@@ -3881,7 +3894,7 @@ void SciTEBase::Notify(SCNotification *notification) {
 	switch (static_cast<SA::Notification>(notification->nmhdr.code)) {
 	case SA::Notification::Painted:
 		if ((notification->nmhdr.idFrom == IDM_SRCWIN) == (pwFocussed == &wEditor)) {
-			// Obly highlight focussed pane.
+			// Only highlight focused pane.
 			// Manage delay before highlight when no user selection but there is word at the caret.
 			// So the Delay is based on the blinking of caret, scroll...
 			// If currentWordHighlight.statesOfDelay == currentWordHighlight.delay,
@@ -4628,7 +4641,7 @@ bool SciTEBase::ProcessCommandLine(const GUI::gui_string &args, int phase) {
 				if (phase == 1) {
 					OpenFilesFromStdin();
 				}
-			} else if ((tolower(arg[0]) == 'p') && (arg[1] == 0)) {
+			} else if ((arg[0] == 'p' || arg[0] == 'P') && (arg[1] == 0)) {
 				performPrint = true;
 			} else if (GUI::gui_string(arg) == GUI_TEXT("grep") && (wlArgs.size() - i >= 4) && (wlArgs[i+1].size() >= 4)) {
 				// in form -grep [w~][c~][d~][b~] "<file-patterns>" "<search-string>"
