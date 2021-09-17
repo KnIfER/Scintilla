@@ -94,7 +94,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>LibScintilla.lib;LibLexilla.lib;gdi32.lib;msimg32.lib;comdlg32.lib;comctl32.lib;advapi32.lib;imm32.lib;shell32.lib;ole32.lib;oleaut32.lib;uxtheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>LibScintilla.lib;LibLexilla.lib;LibLua.lib;gdi32.lib;msimg32.lib;comdlg32.lib;comctl32.lib;advapi32.lib;imm32.lib;shell32.lib;ole32.lib;oleaut32.lib;uxtheme.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <CETCompat>true</CETCompat>
     </Link>
     <ResourceCompile>
@@ -241,7 +241,6 @@
     <ClCompile Include="..\win32\SciTEWinBar.cxx" />
     <ClCompile Include="..\win32\SciTEWinDlg.cxx" />
     <ClCompile Include="..\win32\Strips.cxx" />
-    <ClCompile Include="..\lua\src\*.c" />
     <ClCompile Include="UniqueInstance.cxx" />
   </ItemGroup>
   <ItemGroup>
@@ -254,6 +253,7 @@
     <ClInclude Include="..\..\scintilla\include\ILexer.h" />
     <ClInclude Include="..\..\scintilla\include\ILoader.h" />
     <ClInclude Include="..\..\scintilla\include\Scintilla.h" />
+    <ClInclude Include="..\..\scintilla\include\ScintillaCall.h" />
     <ClInclude Include="..\..\scintilla\include\ScintillaMessages.h" />
     <ClInclude Include="..\..\scintilla\include\ScintillaStructures.h" />
     <ClInclude Include="..\..\scintilla\include\ScintillaTypes.h" />
