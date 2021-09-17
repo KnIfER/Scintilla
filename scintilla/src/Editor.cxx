@@ -123,6 +123,7 @@ Editor::Editor() : durationWrapOneByte(0.000001, 0.0000001, 0.00001) {
 	stylesValid = false;
 	technology = Technology::Default;
 	scaleRGBAImage = 100.0f;
+	smoothScrolling = false;
 
 	cursorMode = CursorShape::Normal;
 
@@ -1693,7 +1694,7 @@ void Editor::PaintSelMargin(Surface *surfaceWindow, const PRectangle &rc) {
 	if (rcMargin.top < rc.top)
 		rcMargin.top = rc.top;
 
-	marginView.PaintMargin(surface, topLine, rc, rcMargin, *this, vs);
+	marginView.PaintMargin(surface, topLine, rc, rcMargin, *this, vs, view.scrollOffset);
 
 	if (view.bufferedDraw) {
 		marginView.pixmapSelMargin->FlushDrawing();
@@ -8619,6 +8620,13 @@ sptr_t Editor::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 
 	case Message::GetTechnology:
 		return static_cast<sptr_t>(technology);
+
+	case Message::SetSmoothScrolling:
+		smoothScrolling = static_cast<bool>(wParam);
+		break;
+
+	case Message::GetSmoothScrolling:
+		return smoothScrolling;
 
 	case Message::CountCharacters:
 		return pdoc->CountCharacters(PositionFromUPtr(wParam), lParam);

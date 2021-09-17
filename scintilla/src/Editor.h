@@ -195,6 +195,7 @@ protected:	// ScintillaBase subclass needs access to much of Editor
 	Scintilla::Technology technology;
 	Point sizeRGBAImage;
 	float scaleRGBAImage;
+	bool smoothScrolling;
 
 	MarginView marginView;
 	EditView view;

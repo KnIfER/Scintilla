@@ -37,7 +37,7 @@ public:
 	void DropGraphics() noexcept;
 	void RefreshPixMaps(Surface *surfaceWindow, const ViewStyle &vsDraw);
 	void PaintMargin(Surface *surface, Sci::Line topLine, PRectangle rc, PRectangle rcMargin,
-		const EditModel &model, const ViewStyle &vs);
+		const EditModel &model, const ViewStyle &vs, const int scrollOffset);
 };
 
 }

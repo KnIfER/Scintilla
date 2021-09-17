@@ -173,7 +173,7 @@ static MarkerOutline SubstituteMarkerIfEmpty(MarkerOutline markerCheck, MarkerOu
 }
 
 void MarginView::PaintMargin(Surface *surface, Sci::Line topLine, PRectangle rc, PRectangle rcMargin,
-	const EditModel &model, const ViewStyle &vs) {
+	const EditModel &model, const ViewStyle &vs, const int scrollOffset) {
 
 	PRectangle rcSelMargin = rcMargin;
 	rcSelMargin.right = rcMargin.left;
@@ -252,7 +252,7 @@ void MarginView::PaintMargin(Surface *surface, Sci::Line topLine, PRectangle rc,
 			const MarkerOutline folderEnd = SubstituteMarkerIfEmpty(MarkerOutline::FolderEnd,
 				MarkerOutline::Folder, vs);
 
-			while ((visibleLine < model.pcs->LinesDisplayed()) && yposScreen < rc.bottom) {
+			while ((visibleLine < model.pcs->LinesDisplayed()) && yposScreen < rc.bottom + (scrollOffset==0?0:vs.lineHeight)) {
 
 				PLATFORM_ASSERT(visibleLine < model.pcs->LinesDisplayed());
 				const Sci::Line lineDoc = model.pcs->DocFromDisplay(visibleLine);
@@ -361,9 +361,9 @@ void MarginView::PaintMargin(Surface *surface, Sci::Line topLine, PRectangle rc,
 
 				const PRectangle rcMarker(
 					rcSelMargin.left,
-					static_cast<XYPOSITION>(yposScreen),
+					static_cast<XYPOSITION>(yposScreen) + scrollOffset,
 					rcSelMargin.right,
-					static_cast<XYPOSITION>(yposScreen + vs.lineHeight));
+					static_cast<XYPOSITION>(yposScreen + scrollOffset + vs.lineHeight));
 				if (vs.ms[margin].style == MarginType::Number) {
 					if (firstSubLine) {
 						std::string sNumber;

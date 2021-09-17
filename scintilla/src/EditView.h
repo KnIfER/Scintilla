@@ -55,6 +55,7 @@ public:
 	PrintParameters printParameters;
 	std::unique_ptr<LineTabstops> ldTabstops;
 	int tabWidthMinimumPixels;
+	int scrollOffset;
 
 	bool hideSelection;
 	bool drawOverstrikeCaret; // used by the curses platform

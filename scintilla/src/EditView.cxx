@@ -194,6 +194,7 @@ EditView::EditView() {
 	tabArrowHeight = 4;
 	customDrawTabArrow = nullptr;
 	customDrawWrapMarker = nullptr;
+	scrollOffset = 0;
 }
 
 EditView::~EditView() = default;
@@ -2311,7 +2312,6 @@ void EditView::PaintText(Surface *surfaceWindow, const EditModel &model, PRectan
 	// Allow text at start of line to overlap 1 pixel into the margin as this displays
 	// serifs and italic stems for aliased text.
 	const int leftTextOverlap = ((model.xOffset == 0) && (vsDraw.leftMarginWidth > 0)) ? 1 : 0;
-
 	// Do the painting
 	if (rcArea.right > vsDraw.textStart - leftTextOverlap) {
 
@@ -2372,10 +2372,11 @@ void EditView::PaintText(Surface *surfaceWindow, const EditModel &model, PRectan
 		for (const DrawPhase &phase : phases) {
 			int ypos = 0;
 			if (!bufferedDraw)
-				ypos += screenLinePaintFirst * vsDraw.lineHeight;
+				ypos += screenLinePaintFirst * vsDraw.lineHeight + scrollOffset;
 			int yposScreen = screenLinePaintFirst * vsDraw.lineHeight;
+
 			Sci::Line visibleLine = model.TopLineOfMain() + screenLinePaintFirst;
-			while (visibleLine < model.pcs->LinesDisplayed() && yposScreen < rcArea.bottom) {
+			while (visibleLine < model.pcs->LinesDisplayed() && yposScreen < rcArea.bottom + (scrollOffset==0?0:vsDraw.lineHeight)) {
 
 				const Sci::Line lineDoc = model.pcs->DocFromDisplay(visibleLine);
 				// Only visible lines should be handled by the code within the loop
@@ -2441,9 +2442,10 @@ void EditView::PaintText(Surface *surfaceWindow, const EditModel &model, PRectan
 
 					if (bufferedDraw) {
 						const Point from = Point::FromInts(vsDraw.textStart - leftTextOverlap, 0);
-						const PRectangle rcCopyArea = PRectangle::FromInts(vsDraw.textStart - leftTextOverlap, yposScreen,
+						const PRectangle rcCopyArea = PRectangle::FromInts(vsDraw.textStart - leftTextOverlap
+							, yposScreen + scrollOffset,
 							static_cast<int>(rcClient.right - vsDraw.rightMarginWidth),
-							yposScreen + vsDraw.lineHeight);
+							yposScreen + scrollOffset + vsDraw.lineHeight);
 						pixmapLine->FlushDrawing();
 						surfaceWindow->Copy(rcCopyArea, from, *pixmapLine);
 					}

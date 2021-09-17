@@ -3012,6 +3012,14 @@ Technology ScintillaCall::Technology() {
 	return static_cast<Scintilla::Technology>(Call(Message::GetTechnology));
 }
 
+void ScintillaCall::SetSmoothScrolling(bool smoothScrolling) {
+	Call(Message::SetSmoothScrolling, static_cast<uintptr_t>(smoothScrolling));
+}
+
+bool ScintillaCall::SmoothScrolling() {
+	return static_cast<bool>(Call(Message::GetSmoothScrolling));
+}
+
 void *ScintillaCall::CreateLoader(Position bytes, Scintilla::DocumentOption documentOptions) {
 	return reinterpret_cast<void *>(Call(Message::CreateLoader, bytes, static_cast<intptr_t>(documentOptions)));
 }

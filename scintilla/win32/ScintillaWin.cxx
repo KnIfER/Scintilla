@@ -312,7 +312,16 @@ public:
 }
 
 namespace Scintilla::Internal {
-
+	struct ScrollJob {
+		bool active = false;
+		Sci::Line scrollSt;
+		Sci::Line scrollEd;
+		float progress;
+		int direction;
+		float spd;
+	};
+	UINT_PTR timer_smooth_scroll=0x123;
+	int timer_smooth_scroll_interval=10;
 /**
  */
 class ScintillaWin :
@@ -344,6 +353,8 @@ class ScintillaWin :
 	DropSource ds;
 	DataObject dob;
 	DropTarget dt;
+
+	ScrollJob scrollJob;
 
 	static HINSTANCE hInstance;
 	static ATOM scintillaClassAtom;
@@ -1554,7 +1565,49 @@ sptr_t ScintillaWin::MouseMessage(unsigned int iMessage, uptr_t wParam, sptr_t l
 				}
 			} else {
 				// Scroll
-				ScrollTo(topLine + linesToScroll);
+				//smoothScrollTo(topLine + linesToScroll);
+				if (smoothScrolling)
+				{
+					if (!scrollJob.active)
+					{
+						scrollJob.active = true;
+						scrollJob.scrollSt = topLine;
+						scrollJob.scrollEd = std::clamp<Sci::Line>(topLine + linesToScroll, 0, MaxScrollPos());
+						scrollJob.progress = 0;
+						scrollJob.direction = linesToScroll<0?-1:1;
+						scrollJob.spd = 6;
+						::SetTimer(MainHWND(), timer_smooth_scroll, timer_smooth_scroll_interval, 0);
+					}
+					else
+					{
+						//::KillTimer(MainHWND(), timer_smooth_scroll);
+						scrollJob.scrollEd = std::clamp<Sci::Line>(scrollJob.scrollEd + linesToScroll, 0, MaxScrollPos());
+						if (scrollJob.scrollEd<topLine)
+						{
+							scrollJob.direction = -1;
+						} 
+						else if(scrollJob.scrollEd>topLine) 
+						{
+							scrollJob.direction = 1;
+						}
+						else {
+							scrollJob.direction = linesToScroll<0?-1:1;
+						}
+						float spd = 5;
+						float spdFac = fabs(topLine-scrollJob.scrollEd)/fmax(linesPerScroll, 1);
+						if (spdFac>1)
+							spd *= spdFac;
+						if (spd>scrollJob.spd)
+						{
+							scrollJob.spd = spd;
+						}
+						//::SetTimer(MainHWND(), timer_smooth_scroll, timer_smooth_scroll_interval, 0);
+					}
+				}
+				else
+				{
+					ScrollTo(topLine + linesToScroll);
+				}
 			}
 		}
 		return 0;
@@ -1842,7 +1895,14 @@ sptr_t ScintillaWin::SciMessage(Message iMessage, uptr_t wParam, sptr_t lParam) 
 	case Message::GETKEYSUNICODE:
 		return true;
 #endif
-
+	case Message::SetSmoothScrolling:
+		smoothScrolling = static_cast<bool>(wParam);
+		if (!smoothScrolling)
+		{
+			::KillTimer(MainHWND(), timer_smooth_scroll);
+			view.scrollOffset = 0;
+		}
+		return true;
 	case Message::SetTechnology:
 		if (const Technology technologyNew = static_cast<Technology>(wParam);
 			(technologyNew == Technology::Default) ||
@@ -1943,6 +2003,41 @@ sptr_t ScintillaWin::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 				SendMessage(MainHWND(), SC_WIN_IDLE, 0, 1);
 			} else {
 				TickFor(static_cast<TickReason>(wParam - fineTimerStart));
+			}
+			if (wParam == timer_smooth_scroll) 
+			{
+				float newProg = scrollJob.progress + scrollJob.spd*scrollJob.direction;
+
+				float newTop = scrollJob.scrollSt + newProg/vs.lineHeight;
+				if ((newTop-scrollJob.scrollEd)*scrollJob.direction>=0)
+				{ // stopped.
+					scrollJob.active = false;
+					::KillTimer(MainHWND(), wParam);
+					view.scrollOffset = 0;
+					const Sci::Line topLineNew = std::clamp<Sci::Line>(scrollJob.scrollEd, 0, MaxScrollPos());
+					if (topLine!=topLineNew)
+					{
+						ScrollTo(topLineNew);
+					} 
+					else
+					{
+						Redraw();
+					}
+				}
+				else
+				{ // simple smooth scroll.
+					const Sci::Line topLineNew = std::clamp<Sci::Line>(newTop, 0, MaxScrollPos());
+					view.scrollOffset = ((topLineNew-scrollJob.scrollSt)*vs.lineHeight-newProg);
+					scrollJob.progress = newProg;
+					if (topLine!=topLineNew)
+					{
+						ScrollTo(topLineNew);
+					} 
+					else
+					{
+						Redraw();
+					}
+				}
 			}
 			break;
 
@@ -2082,6 +2177,7 @@ sptr_t ScintillaWin::WndProc(Message iMessage, uptr_t wParam, sptr_t lParam) {
 		case Message::GetDirectPointer:
 		case Message::GrabFocus:
 		case Message::SetTechnology:
+		case Message::SetSmoothScrolling:
 		case Message::SetBidirectional:
 		case Message::TargetAsUTF8:
 		case Message::EncodedFromUTF8:
@@ -3089,6 +3185,7 @@ LRESULT ScintillaWin::ImeOnReconvert(LPARAM lParam) {
 void ScintillaWin::GetIntelliMouseParameters() noexcept {
 	// This retrieves the number of lines per scroll as configured in the Mouse Properties sheet in Control Panel
 	::SystemParametersInfo(SPI_GETWHEELSCROLLLINES, 0, &linesPerScroll, 0);
+	//linesPerScroll = 1;
 }
 
 void ScintillaWin::CopyToGlobal(GlobalMemory &gmUnicode, const SelectionText &selectedText) {
